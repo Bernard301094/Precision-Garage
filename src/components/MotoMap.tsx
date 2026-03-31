@@ -14,22 +14,23 @@ const DAMAGE_META: Record<DamageType,{color:string;badge:string}> = {
   'Oxidação':       {color:'#d97706', badge:'bg-amber-600/15 text-amber-500 border-amber-600/30'},
 };
 
+// Zonas calibradas para o SVG real (viewBox 0 0 64 64, escalado para %)
 const MOTO_ZONES = [
-  {id:'farol',       label:'Farol',               cx:13, cy:42},
-  {id:'carenagem_f', label:'Carenagem Frontal',   cx:21, cy:55},
-  {id:'guidao',      label:'Guidão',              cx:28, cy:32},
-  {id:'tanque',      label:'Tanque',              cx:50, cy:30},
-  {id:'banco',       label:'Banco',               cx:67, cy:34},
-  {id:'carenagem_l', label:'Carenagem Lateral',   cx:50, cy:64},
-  {id:'motor',       label:'Motor',               cx:50, cy:78},
-  {id:'escapamento', label:'Escapamento',         cx:68, cy:83},
-  {id:'para_lama_t', label:'Para-lama Traseiro',  cx:80, cy:50},
-  {id:'lanterna',    label:'Lanterna Traseira',   cx:88, cy:55},
-  {id:'pneu_d',      label:'Pneu Dianteiro',      cx:16, cy:88},
-  {id:'pneu_t',      label:'Pneu Traseiro',       cx:82, cy:88},
-  {id:'suspensao_d', label:'Suspensão Dianteira', cx:22, cy:65},
-  {id:'suspensao_t', label:'Suspensão Traseira',  cx:77, cy:65},
-  {id:'para_lama_d', label:'Para-lama Dianteiro', cx:13, cy:65},
+  {id:'farol',       label:'Farol',               cx:20,  cy:26},
+  {id:'guidao',      label:'Guidão',              cx:30,  cy:18},
+  {id:'painel',      label:'Painel / Instrumento', cx:37,  cy:22},
+  {id:'tanque',      label:'Tanque',              cx:44,  cy:28},
+  {id:'banco',       label:'Banco',               cx:57,  cy:30},
+  {id:'carenagem_l', label:'Carenagem Lateral',   cx:50,  cy:48},
+  {id:'motor',       label:'Motor',               cx:50,  cy:60},
+  {id:'escapamento', label:'Escapamento',         cx:65,  cy:70},
+  {id:'para_lama_t', label:'Para-lama Traseiro',  cx:74,  cy:42},
+  {id:'lanterna',    label:'Lanterna Traseira',   cx:80,  cy:36},
+  {id:'pneu_d',      label:'Pneu Dianteiro',      cx:18,  cy:82},
+  {id:'pneu_t',      label:'Pneu Traseiro',       cx:84,  cy:82},
+  {id:'suspensao_d', label:'Suspensão Dianteira', cx:25,  cy:62},
+  {id:'suspensao_t', label:'Suspensão Traseira',  cx:76,  cy:60},
+  {id:'para_lama_d', label:'Para-lama Dianteiro', cx:15,  cy:60},
 ];
 
 export interface DamagePin {
@@ -39,388 +40,86 @@ export interface DamagePin {
 }
 interface MotoMapProps { pins:DamagePin[]; onChange:(pins:DamagePin[])=>void; }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SVG — Moto Naked Sport — Vista Lateral Direita — Totalmente Redesenhada
-   ViewBox: 0 0 600 300
-═══════════════════════════════════════════════════════════════════════════ */
+/*
+  SVG original: MIT License — joypixels/emojione (https://github.com/joypixels/emojione)
+  Modificado: fill trocado de #000 para cores do tema Precision Garage
+*/
 const MotoSVG = () => (
-  <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none">
+  <svg
+    viewBox="0 0 64 64"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlnsXlink="http://www.w3.org/1999/xlink"
+    className="w-full h-full"
+    preserveAspectRatio="xMidYMid meet"
+    style={{filter:'drop-shadow(0 4px 24px rgba(0,0,0,0.8))'}}
+  >
     <defs>
-      {/* Pneu */}
-      <radialGradient id="rg_tire" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#2c2c2c"/>
-        <stop offset="70%" stopColor="#181818"/>
-        <stop offset="100%" stopColor="#0a0a0a"/>
-      </radialGradient>
-      {/* Aro */}
-      <radialGradient id="rg_rim" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#4a4a4a"/>
-        <stop offset="100%" stopColor="#1a1a1a"/>
-      </radialGradient>
-      {/* Tanque */}
-      <linearGradient id="lg_tank" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#3a3a3a"/>
-        <stop offset="40%" stopColor="#242424"/>
-        <stop offset="100%" stopColor="#141414"/>
+      <linearGradient id="mg_body" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#c0c0c0"/>
+        <stop offset="100%" stopColor="#666"/>
       </linearGradient>
-      {/* Carenagem lateral */}
-      <linearGradient id="lg_fairing" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#2a2a2a"/>
-        <stop offset="100%" stopColor="#111"/>
+      <linearGradient id="mg_dark" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#888"/>
+        <stop offset="100%" stopColor="#444"/>
       </linearGradient>
-      {/* Motor */}
-      <linearGradient id="lg_engine" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#303030"/>
-        <stop offset="100%" stopColor="#161616"/>
-      </linearGradient>
-      {/* Escape */}
-      <linearGradient id="lg_exhaust" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#383838"/>
-        <stop offset="60%" stopColor="#606060"/>
-        <stop offset="100%" stopColor="#888"/>
-      </linearGradient>
-      {/* Chassi */}
-      <linearGradient id="lg_frame" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#b0b0b0"/>
-        <stop offset="100%" stopColor="#606060"/>
-      </linearGradient>
-      {/* Reflexo tanque */}
-      <linearGradient id="lg_tank_shine" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="rgba(255,255,255,0.12)"/>
-        <stop offset="100%" stopColor="rgba(255,255,255,0)"/>
-      </linearGradient>
-      {/* Farol glow */}
-      <radialGradient id="rg_headlight" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#60d0ff" stopOpacity="0.9"/>
-        <stop offset="100%" stopColor="#1d8bb1" stopOpacity="0.3"/>
-      </radialGradient>
-      {/* Lanterna glow */}
-      <radialGradient id="rg_taillight" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#ff5555" stopOpacity="1"/>
-        <stop offset="100%" stopColor="#aa0000" stopOpacity="0.4"/>
-      </radialGradient>
-      {/* Sombra projetada no chão */}
-      <radialGradient id="rg_shadow" cx="50%" cy="50%" rx="50%" ry="50%">
-        <stop offset="0%" stopColor="rgba(0,0,0,0.55)"/>
-        <stop offset="100%" stopColor="rgba(0,0,0,0)"/>
-      </radialGradient>
-      {/* Glow filter */}
-      <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="3" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-      <filter id="glow_sm" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="1.5" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-      {/* Drop shadow suave */}
-      <filter id="dshadow">
-        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.6"/>
+      <filter id="mg_glow">
+        <feGaussianBlur stdDeviation="0.5" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
 
-    {/* ══ SOMBRA NO CHÃO ══════════════════════════════════════════════════ */}
-    <ellipse cx="300" cy="276" rx="220" ry="14" fill="url(#rg_shadow)" opacity="0.7"/>
+    {/* Sombra no chão */}
+    <ellipse cx="32" cy="63" rx="28" ry="2" fill="rgba(0,0,0,0.5)"/>
 
-    {/* ══ RODA TRASEIRA ══════════════════════════════════════════════════ */}
-    {/* pneu externo */}
-    <circle cx="460" cy="224" r="68" fill="url(#rg_tire)"/>
-    {/* textura pneu */}
-    <circle cx="460" cy="224" r="68" fill="none" stroke="#111" strokeWidth="12"/>
-    <circle cx="460" cy="224" r="68" fill="none" stroke="#2a2a2a" strokeWidth="2.5"/>
-    <circle cx="460" cy="224" r="62" fill="none" stroke="#222" strokeWidth="1" strokeDasharray="5 4"/>
-    {/* aro */}
-    <circle cx="460" cy="224" r="52" fill="url(#rg_rim)" stroke="#ff906d" strokeWidth="2.5"/>
-    <circle cx="460" cy="224" r="46" fill="none" stroke="#3a3a3a" strokeWidth="1"/>
-    {/* raios — 9 raios cruzados */}
-    {Array.from({length:9},(_,i)=>i*(180/9)).map(a=>(
-      <g key={a}>
-        <line
-          x1={460+18*Math.cos((a-6)*Math.PI/180)} y1={224+18*Math.sin((a-6)*Math.PI/180)}
-          x2={460+50*Math.cos((a+6)*Math.PI/180)} y2={224+50*Math.sin((a+6)*Math.PI/180)}
-          stroke="#555" strokeWidth="1.8" strokeLinecap="round"/>
-        <line
-          x1={460+18*Math.cos((a+186)*Math.PI/180)} y1={224+18*Math.sin((a+186)*Math.PI/180)}
-          x2={460+50*Math.cos((a+174)*Math.PI/180)} y2={224+50*Math.sin((a+174)*Math.PI/180)}
-          stroke="#555" strokeWidth="1.8" strokeLinecap="round"/>
-      </g>
-    ))}
-    {/* cubo */}
-    <circle cx="460" cy="224" r="12" fill="#222" stroke="#666" strokeWidth="2"/>
-    <circle cx="460" cy="224" r="5"  fill="#444" stroke="#888" strokeWidth="1"/>
-    {/* brilho aro */}
-    <path d="M416 188 Q430 178 450 178" stroke="rgba(255,255,255,0.15)" strokeWidth="4" strokeLinecap="round" fill="none"/>
-
-    {/* ══ RODA DIANTEIRA ════════════════════════════════════════════════ */}
-    <circle cx="118" cy="224" r="65" fill="url(#rg_tire)"/>
-    <circle cx="118" cy="224" r="65" fill="none" stroke="#111" strokeWidth="11"/>
-    <circle cx="118" cy="224" r="65" fill="none" stroke="#2a2a2a" strokeWidth="2.5"/>
-    <circle cx="118" cy="224" r="59" fill="none" stroke="#222" strokeWidth="1" strokeDasharray="5 4"/>
-    <circle cx="118" cy="224" r="50" fill="url(#rg_rim)" stroke="#ff906d" strokeWidth="2.5"/>
-    <circle cx="118" cy="224" r="44" fill="none" stroke="#3a3a3a" strokeWidth="1"/>
-    {Array.from({length:9},(_,i)=>i*(180/9)).map(a=>(
-      <g key={a}>
-        <line
-          x1={118+17*Math.cos((a-6)*Math.PI/180)} y1={224+17*Math.sin((a-6)*Math.PI/180)}
-          x2={118+48*Math.cos((a+6)*Math.PI/180)} y2={224+48*Math.sin((a+6)*Math.PI/180)}
-          stroke="#555" strokeWidth="1.8" strokeLinecap="round"/>
-        <line
-          x1={118+17*Math.cos((a+186)*Math.PI/180)} y1={224+17*Math.sin((a+186)*Math.PI/180)}
-          x2={118+48*Math.cos((a+174)*Math.PI/180)} y2={224+48*Math.sin((a+174)*Math.PI/180)}
-          stroke="#555" strokeWidth="1.8" strokeLinecap="round"/>
-      </g>
-    ))}
-    <circle cx="118" cy="224" r="12" fill="#222" stroke="#666" strokeWidth="2"/>
-    <circle cx="118" cy="224" r="5"  fill="#444" stroke="#888" strokeWidth="1"/>
-    <path d="M78 192 Q90 182 108 180" stroke="rgba(255,255,255,0.12)" strokeWidth="4" strokeLinecap="round" fill="none"/>
-
-    {/* ══ SUSPENSÃO DIANTEIRA (garfo telescópico) ═══════════════════════ */}
-    {/* tubo externo esquerdo */}
-    <path d="M110 160 C108 178 112 200 118 220" stroke="#888" strokeWidth="7" strokeLinecap="round" fill="none"/>
-    {/* tubo externo direito */}
-    <path d="M124 158 C122 176 126 200 128 220" stroke="#777" strokeWidth="5.5" strokeLinecap="round" fill="none"/>
-    {/* brilho garfo */}
-    <path d="M111 162 C110 178 113 202 118 222" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" fill="none"/>
-    {/* cursor (parte superior) */}
-    <path d="M110 160 C112 148 120 140 130 132" stroke="#aaa" strokeWidth="6.5" strokeLinecap="round" fill="none"/>
-    <path d="M124 158 C126 148 132 140 142 133" stroke="#888" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    {/* canopla */}
-    <rect x="108" y="156" width="22" height="8" rx="4" fill="#333" stroke="#555" strokeWidth="1"/>
-    {/* eixo dianteiro */}
-    <line x1="106" y1="222" x2="130" y2="222" stroke="#666" strokeWidth="3.5" strokeLinecap="round"/>
-
-    {/* ══ CHASSI PRINCIPAL (backbone tubular) ══════════════════════════ */}
-    {/* tubo superior principal */}
+    {/* Detalhe pequeno esquerdo (guidao/espelho) */}
     <path
-      d="M142 130 C158 108 185 92 222 82 C258 72 295 72 328 80 C358 88 382 104 400 128"
-      stroke="url(#lg_frame)" strokeWidth="8" strokeLinecap="round" fill="none" filter="url(#dshadow)"/>
-    {/* tubo inferior (craddle) */}
+      d="M13.895 39.35h-2.52c-1.754.23 1.685 1.96 1.685 1.96s1.685-1.239 1.685-1.614c-.001-.375-.85-.346-.85-.346"
+      fill="#aaa"
+    />
+    {/* Detalhes de escudo/cabeçote */}
     <path
-      d="M148 138 C150 165 155 188 162 200 C175 215 210 222 258 222 C306 222 360 218 392 205 L408 180"
-      stroke="#555" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    {/* tubo diagonal motor */}
-    <path d="M222 82 L228 222" stroke="#4a4a4a" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-    <path d="M328 80 L336 218" stroke="#4a4a4a" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-    {/* cinto central */}
-    <path d="M228 150 L336 148" stroke="#404040" strokeWidth="3" strokeLinecap="round" fill="none"/>
-    {/* subquadro traseiro */}
-    <path d="M328 80 C345 68 375 65 405 75 C420 82 428 95 425 112 L408 130 L400 128"
-      stroke="#666" strokeWidth="4" strokeLinecap="round" fill="none"/>
-    <path d="M375 65 L380 112" stroke="#555" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-
-    {/* ══ CARENAGEM LATERAL (corpo da moto) ════════════════════════════ */}
+      d="M26.766 51.159c-.466.269-.93.875-1.03 1.346l-.19.894c-.1.472.009 1.028.241 1.236c.232.209.545 0 .694-.461l.86-2.661c.151-.464-.109-.624-.575-.354"
+      fill="#777"
+    />
     <path
-      d="M162 138 C158 160 158 188 162 200 L222 210 L336 208 L344 180 L340 138 L310 130 L228 128 Z"
-      fill="url(#lg_fairing)" stroke="#303030" strokeWidth="1.5" opacity="0.9"/>
-    {/* painel esportivo lateral esquerdo */}
+      d="M38.883 50.143c-.465.271-.93.875-1.029 1.348l-.191.892c-.1.472.01 1.028.242 1.238c.232.208.545.001.695-.463l.859-2.659c.148-.466-.111-.625-.576-.356"
+      fill="#777"
+    />
+
+    {/* Corpo principal da moto */}
     <path
-      d="M165 155 C163 175 164 195 168 205 L222 210 L228 165 Z"
-      fill="#1e1e1e" stroke="#ff906d" strokeWidth="1" opacity="0.6"/>
-    {/* detalhe ventilação */}
-    {[170,178,186].map(y=>(
-      <path key={y} d={`M170 ${y} Q190 ${y-2} 210 ${y}`} stroke="#333" strokeWidth="1" fill="none"/>
-    ))}
+      d="M52.625 43.558a9.41 9.41 0 0 0-7.074 3.182l-.646-.286c.207-.189.43-.385.689-.59c.41-.322.566-.688.574-1.051l12.426-5.883a3.774 3.774 0 0 0-.602-2.211c1.729-2.172 1.758-4.762 1.758-4.904V30.34h-1.5c-2.23 0-3.977.048-6.145.673c-1.482.428-2.537.888-3.318 1.386c.221-1.014.082-2.19-.785-3.442c0 0-5.709-5.956-12.273-7.799c1.965-1.562 2.613-3.287 2.613-6.885C38.342 7.505 32.745 2 25.865 2c-6.879 0-12.476 5.505-12.476 12.272c0 .49.032.925.087 1.322l-.017.006c-1.198.428 1.03 6.574 2.308 6.636c1.832 4.296 4.56 5.27 6.648 5.27c1.069 0 2.205-.282 3.319-.792l.342 4.041l-2.033 1.078l-.094-.084l-1.413-1.268l-.43-.387h-.581c-4.539 0-8.794 2.188-11.383 5.851l-.205.288c-1.218 1.707-2 2.915-1.781 4.1c.097.521.391.97.83 1.263c.401.27.97.646 1.618 1.074a10.353 10.353 0 0 0-5.775 2.272l1.386.142C3.676 46.732 2 49.563 2 52.779C2 57.873 6.197 62 11.375 62c4.079 0 7.539-2.565 8.829-6.143l.002.089a2.721 2.721 0 0 0 2.74 2.747c.087 0 .176-.003.267-.012l.038-.002l.038-.006l18.366-2.505l1.428-.194l-.141-1.41c-.014-.135-.016-.27-.02-.406a8.956 8.956 0 0 0-.037-.672a15.023 15.023 0 0 1-.061-1.934l.486.201a9.372 9.372 0 0 0-.061 1.025c0 5.094 4.197 9.221 9.375 9.221S62 57.873 62 52.779s-4.197-9.221-9.375-9.221m-7.756-4.788c4.592-2.287 1.193-4.477 7.658-6.342c1.986-.572 3.58-.613 5.723-.613c0 0 0 3.746-3.215 5.475c-6.537 3.516-11.785 3.834-11.785 3.834s-.059-1.519 1.619-2.354m-6.668 5.592a3.665 3.665 0 0 1 1.186 1.915c-1.242.205-1.855 1.041-2.24 1.568c-.012.018-.02.025-.031.041l1.085-3.524M25.382 24.699c-1.012.548-2.037.839-2.968.839c-2.376 0-3.855-1.9-4.767-3.986c3.711-1.563 8.254-4.11 10.052-5.979a2 2 0 0 0 .55.085c1.102 0 1.994-.879 1.994-1.961c0-1.083-.893-1.961-1.994-1.961c-.928 0-1.7.625-1.923 1.47c-2.677-.134-7.309.712-10.907 1.764a7.877 7.877 0 0 1-.031-.697c0-5.682 4.7-10.305 10.476-10.305c5.777 0 10.477 4.623 10.477 10.305c0 4.682-.797 5.097-6.999 8.33a255.278 255.278 0 0 0-3.96 2.096m-1.009 12.437c.09-.222.136-.438.153-.657l6.07-2.73a1.667 1.667 0 0 0 .843-1.848h.01l-.145-1.701l4.137 3.615c-.129-.018-.256-.045-.387-.045c-.252 0-.498.033-.73.1c-1.014.289-2.478.854-3.895 1.4c-.784.303-1.525.588-2.074.781c-1.199.418-1.977 1.377-1.977 2.44v.188a70.492 70.492 0 0 0-2.756-.568c.343-.269.587-.575.751-.975m9.621-1.613l-1.04 4.082l-1.77.416a45.073 45.073 0 0 0-3.307-.979v-.552c0-.466.461-.87.981-1.052c1.309-.458 3.564-1.384 5.136-1.915M19.677 32.92l.743-.311c.142-.061.288-.088.433-.088c.413 0 .803.23.975.619l.641 1.473c.953 2.183.953 2.183-1.975 3.409c-.401.169-.75.237-1.053.237c-1.194 0-1.661-1.07-1.761-1.301c-.771-1.76.375-2.646 1.335-3.128c.024-.383.268-.746.662-.91m-3.614 19.859c0 .212-.035.414-.063.619l1.913-.126a6.314 6.314 0 0 1-.625 2.294l-1.578-1.039a4.58 4.58 0 0 1-.643 1.063l1.723.834a6.56 6.56 0 0 1-1.71 1.682l-.847-1.695a4.64 4.64 0 0 1-1.033.617l1.071 1.537a6.625 6.625 0 0 1-2.394.645l.128-1.882c-.208.028-.414.062-.629.062c-.199 0-.388-.033-.581-.057l.147 1.88a6.625 6.625 0 0 1-2.401-.618l1.057-1.553a4.645 4.645 0 0 1-1.081-.631l-.847 1.695a6.576 6.576 0 0 1-1.71-1.682l1.723-.833a4.6 4.6 0 0 1-.643-1.063l-1.578 1.039a6.314 6.314 0 0 1-.625-2.294l1.913.126c-.028-.205-.063-.407-.063-.619c0-.197.035-.383.059-.572l-1.912.145a6.313 6.313 0 0 1 .628-2.359l1.578 1.039c.155-.371.367-.71.61-1.025l-1.73-.818a6.54 6.54 0 0 1 1.749-1.737l.848 1.695a4.617 4.617 0 0 1 1.081-.633l-1.057-1.553a6.578 6.578 0 0 1 2.333-.614l-.128 1.882c.208-.027.414-.063.629-.063s.421.035.629.063l-.127-1.882a6.594 6.594 0 0 1 1.859.417l-1.659 3.344a2.85 2.85 0 0 0-.701-.098c-1.554 0-2.813 1.238-2.813 2.768s1.259 2.766 2.813 2.766c1.553 0 2.813-1.236 2.813-2.766c0-.8-.349-1.514-.899-2.019l2.145-3.017c.514.401.984.855 1.357 1.391l-1.723.834c.247.313.468.645.627 1.015l1.563-1.054c.361.721.59 1.514.655 2.355l-1.913-.125c.026.205.062.407.062.62m25.33.864c.039.357.021.715.057 1.064l-18.368 2.506a1.581 1.581 0 0 1-.136.006c-.8 0-1.24-.633-1.24-1.295c0 0-.098-6.318-.956-7.871c-.439-.795-2.773-2.322-2.809-2.346c0 0-6.095-3.979-8.11-5.331c-.745-.499.669-2.354 1.543-3.589a12.35 12.35 0 0 1 7.092-4.842c-.31.248-.563.553-.725.908c-1.137.729-1.61 1.592-1.756 2.402c-.291.262-.58.545-.86.867c-.392.448-1.699 2.363 0 2.363c.332 0 .986.044 1.861.133a3.202 3.202 0 0 0 2.455 1.117c.527 0 1.08-.121 1.643-.357l.363-.152c3.213.525 7.029 1.342 10.084 2.486c.297.111.564.219.806.324l-1.556 6.113l-.705-.174a3.614 3.614 0 0 0-1.471-.056c.09-.108.033-.271-.223-.461l-6.418-4.747c-.441-.326-.803-.229-.803.217s.359 1.078.797 1.408l4.144 3.115c.439.33 1.249.6 1.8.6h.156c-1.08.357-1.948 1.215-2.232 2.365l8.163 2.017c.947.233 1.898-.312 2.123-1.224l.307-1.228c2.166-.263 1.76-2.276 3.551-2.276c.691 0 1.299.103 1.83.244c-.427 1.42-.599 3.889-.407 5.694m-.651-9.03l-.652-.287l3.65-1.768a25.284 25.284 0 0 0 2.982-.524l-1.502.937c-.199-.209-.352-.336-.352-.336l-4.126 1.978m8.178 2.84l.496.994l-1.109-.49c.199-.174.392-.355.613-.504m8.393 5.326c0 .212-.035.414-.063.619l1.912-.126a6.314 6.314 0 0 1-.625 2.294l-1.578-1.039a4.546 4.546 0 0 1-.643 1.063l1.723.833a6.525 6.525 0 0 1-1.709 1.682l-.848-1.694c-.318.242-.656.46-1.031.616l1.07 1.537a6.624 6.624 0 0 1-2.395.645l.127-1.882c-.207.028-.414.062-.629.062c-.199 0-.389-.033-.58-.057l.146 1.88a6.62 6.62 0 0 1-2.4-.618l1.057-1.553a4.652 4.652 0 0 1-1.082-.631l-.846 1.695a6.525 6.525 0 0 1-1.709-1.682l1.723-.834a4.559 4.559 0 0 1-.643-1.063l-1.578 1.039a6.294 6.294 0 0 1-.625-2.294l1.057.069l3.623 1.5a2.815 2.815 0 0 0 1.857.703c1.553 0 2.813-1.236 2.813-2.766c0-1.385-1.035-2.521-2.385-2.725l-2.799-1.237c.189-.114.387-.218.594-.302L49.79 46.96a6.59 6.59 0 0 1 2.332-.614l-.127 1.882c.207-.027.414-.063.629-.063s.422.035.629.063l-.127-1.882a6.61 6.61 0 0 1 2.332.614l-1.057 1.553c.377.152.721.361 1.043.601l.828-1.702a6.537 6.537 0 0 1 1.768 1.721l-1.723.833c.246.313.467.646.627 1.016l1.563-1.054c.361.721.59 1.514.654 2.355l-1.911-.123c.027.204.063.406.063.619"
+      fill="url(#mg_body)"
+    />
 
-    {/* ══ MOTOR (twin-cylinder) ════════════════════════════════════════ */}
-    {/* bloco principal */}
-    <rect x="220" y="148" width="148" height="76" rx="10" fill="url(#lg_engine)" stroke="#3a3a3a" strokeWidth="2" filter="url(#dshadow)"/>
-    {/* nervuras de resfriamento */}
-    {[160,170,180,190,200].map(y=>(
-      <path key={y} d={`M222 ${y} L366 ${y}`} stroke="#262626" strokeWidth="0.8"/>
-    ))}
-    {/* cilindro 1 */}
-    <rect x="234" y="128" width="42" height="32" rx="6" fill="#282828" stroke="#4a4a4a" strokeWidth="1.5"/>
-    <rect x="237" y="131" width="36" height="8" rx="3" fill="#1a1a1a" stroke="#333" strokeWidth="1"/>
-    <path d="M237 143 Q255 140 272 143" stroke="#333" strokeWidth="1" fill="none"/>
-    {/* cilindro 2 */}
-    <rect x="290" y="128" width="42" height="32" rx="6" fill="#282828" stroke="#4a4a4a" strokeWidth="1.5"/>
-    <rect x="293" y="131" width="36" height="8" rx="3" fill="#1a1a1a" stroke="#333" strokeWidth="1"/>
-    <path d="M293 143 Q311 140 328 143" stroke="#333" strokeWidth="1" fill="none"/>
-    {/* válvulas */}
-    <rect x="244" y="124" width="8" height="6" rx="2" fill="#1a1a1a" stroke="#444" strokeWidth="1"/>
-    <rect x="258" y="124" width="8" height="6" rx="2" fill="#1a1a1a" stroke="#444" strokeWidth="1"/>
-    <rect x="300" y="124" width="8" height="6" rx="2" fill="#1a1a1a" stroke="#444" strokeWidth="1"/>
-    <rect x="314" y="124" width="8" height="6" rx="2" fill="#1a1a1a" stroke="#444" strokeWidth="1"/>
-    {/* cárter */}
-    <path d="M220 224 C222 234 230 240 248 242 L340 242 C356 240 364 234 368 224 Z"
-      fill="#1a1a1a" stroke="#2a2a2a" strokeWidth="1.5"/>
-    {/* tampa alternador esq */}
-    <ellipse cx="214" cy="186" rx="14" ry="20" fill="#222" stroke="#3a3a3a" strokeWidth="1.5"/>
-    <ellipse cx="214" cy="186" rx="8"  ry="12" fill="#1a1a1a" stroke="#333" strokeWidth="1"/>
-    <circle  cx="214" cy="186" r="3"   fill="#2a2a2a" stroke="#555" strokeWidth="1"/>
-    {/* tampa embreagem dir */}
-    <ellipse cx="374" cy="184" rx="12" ry="17" fill="#222" stroke="#3a3a3a" strokeWidth="1.5"/>
-    <ellipse cx="374" cy="184" rx="7"  ry="10" fill="#1a1a1a" stroke="#333" strokeWidth="1"/>
-    {/* corrente / transmissão */}
-    <path d="M368 210 Q400 214 440 208" stroke="#333" strokeWidth="3" strokeLinecap="round" fill="none"/>
-    <path d="M368 216 Q400 220 440 214" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" fill="none"/>
-    {/* pinhão */}
-    <circle cx="370" cy="213" r="10" fill="#222" stroke="#444" strokeWidth="1.5"/>
-    <circle cx="442" cy="211" r="22" fill="none" stroke="#333" strokeWidth="2"/>
+    {/* Farol — azul ciano */}
+    <ellipse cx="22" cy="17" rx="4" ry="4.5" fill="#0a1a28" stroke="#1db1f1" strokeWidth="0.4" filter="url(#mg_glow)"/>
+    <ellipse cx="22" cy="17" rx="2.2" ry="2.6" fill="#1db1f1" opacity="0.7" filter="url(#mg_glow)"/>
 
-    {/* ══ TANQUE DE COMBUSTÍVEL ═════════════════════════════════════════ */}
-    {/* corpo */}
+    {/* Lanterna traseira — vermelho */}
+    <rect x="57" y="24" width="4" height="2.5" rx="0.8" fill="#ef4444" opacity="0.9" filter="url(#mg_glow)"/>
+    <rect x="57.4" y="24.3" width="1.8" height="1.5" rx="0.4" fill="#fca5a5" opacity="0.8"/>
+
+    {/* Tanque — accent da app */}
     <path
-      d="M198 84 C210 54 248 40 285 38 C318 36 352 50 365 72 C372 84 368 108 362 118 L204 118 C196 108 192 96 198 84 Z"
-      fill="url(#lg_tank)" stroke="#ff906d" strokeWidth="2" filter="url(#dshadow)"/>
-    {/* reflexo superior */}
+      d="M33 14 C36 10 44 10 47 14 L46 20 L32 20 Z"
+      fill="#1e1e1e" stroke="#ff906d" strokeWidth="0.5" opacity="0.7"
+    />
+
+    {/* Escape — gradiente metálico */}
     <path
-      d="M215 70 C232 52 265 44 295 46 C318 48 340 58 352 72"
-      fill="none" stroke="url(#lg_tank_shine)" strokeWidth="10" strokeLinecap="round"/>
-    {/* faixa decorativa */}
-    <path d="M204 118 L210 105 L358 105 L362 118 Z" fill="#ff906d" opacity="0.12"/>
-    <path d="M210 105 L358 105" stroke="#ff906d" strokeWidth="1" opacity="0.4"/>
-    {/* logotipo placeholder */}
-    <rect x="255" y="72" width="48" height="18" rx="4" fill="rgba(0,0,0,0.4)" stroke="rgba(255,144,109,0.3)" strokeWidth="1"/>
-    <path d="M262 81 L278 81 M271 77 L271 85" stroke="rgba(255,144,109,0.5)" strokeWidth="1.5" strokeLinecap="round"/>
-    {/* tampa combustível */}
-    <ellipse cx="290" cy="42" rx="16" ry="8" fill="#282828" stroke="#555" strokeWidth="1.5"/>
-    <ellipse cx="290" cy="42" rx="10" ry="5" fill="#1e1e1e" stroke="#444" strokeWidth="1"/>
-    <line x1="282" y1="42" x2="298" y2="42" stroke="#555" strokeWidth="1"/>
-
-    {/* ══ BANCO ════════════════════════════════════════════════════════ */}
-    {/* base estrutural */}
+      d="M42 47 Q52 49 58 45"
+      stroke="#888" strokeWidth="1.8" strokeLinecap="round" fill="none"
+    />
     <path
-      d="M308 80 C335 68 370 66 405 76 C418 82 422 92 418 100 L404 108 C380 100 345 96 314 100 Z"
-      fill="#1e1e1e" stroke="#3a3a3a" strokeWidth="1.5"/>
-    {/* couro */}
-    <path
-      d="M312 82 C336 72 368 70 400 80 C412 85 415 93 411 99 L402 105 C376 97 342 94 316 98 Z"
-      fill="#242424" stroke="#444" strokeWidth="1"/>
-    {/* costura */}
-    <path d="M318 90 C348 82 376 82 402 90" stroke="#333" strokeWidth="1" strokeDasharray="3 2.5" fill="none"/>
-    <path d="M316 96 C346 88 374 88 403 96" stroke="#333" strokeWidth="1" strokeDasharray="3 2.5" fill="none"/>
-    {/* reflexo */}
-    <path d="M324 78 C348 70 374 70 398 78" stroke="rgba(255,255,255,0.05)" strokeWidth="4" strokeLinecap="round" fill="none"/>
-
-    {/* ══ SUSPENSÃO TRASEIRA (mono-amortecedor) ════════════════════════ */}
-    <path d="M408 180 C415 165 418 148 412 132" stroke="#888" strokeWidth="5.5" strokeLinecap="round" fill="none"/>
-    <path d="M416 178 C423 163 426 146 420 130" stroke="#666" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-    {/* corpo amortecedor */}
-    <ellipse cx="412" cy="155" rx="6" ry="18" fill="#2a2a2a" stroke="#555" strokeWidth="1.5" transform="rotate(-8,412,155)"/>
-    <ellipse cx="412" cy="155" rx="4" ry="10" fill="#ff906d" opacity="0.25" transform="rotate(-8,412,155)"/>
-    {/* braço oscilante */}
-    <path d="M408 180 C424 185 444 188 460 188" stroke="#777" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    <path d="M410 186 C426 190 446 192 460 192" stroke="#555" strokeWidth="3" strokeLinecap="round" fill="none"/>
-
-    {/* ══ PARA-LAMA TRASEIRO ═══════════════════════════════════════════ */}
-    <path
-      d="M400 110 C412 118 430 134 445 156 C452 168 455 184 460 190"
-      stroke="#888" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    <path
-      d="M406 112 C418 120 436 136 450 160 C456 170 459 184 462 190"
-      stroke="#444" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    {/* detalhe borda */}
-    <path d="M398 108 C404 112 408 116 410 120" stroke="#ff906d" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
-
-    {/* ══ LANTERNA TRASEIRA ════════════════════════════════════════════ */}
-    <path d="M420 100 C425 95 438 92 448 96 L452 108 C440 112 426 110 420 106 Z"
-      fill="#2a0000" stroke="#ef4444" strokeWidth="1.5" filter="url(#glow_sm)"/>
-    <path d="M423 102 C428 98 436 96 444 99 L447 107 C437 110 428 108 423 105 Z"
-      fill="url(#rg_taillight)" opacity="0.85"/>
-    {/* LED strip */}
-    <path d="M425 103 L443 101" stroke="#ff8888" strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/>
-
-    {/* ══ GUIÑÓN ═══════════════════════════════════════════════════════ */}
-    {/* haste direção */}
-    <path d="M148 122 C150 112 155 100 162 90" stroke="#999" strokeWidth="6" strokeLinecap="round" fill="none"/>
-    {/* tê superior */}
-    <rect x="148" y="86" width="40" height="10" rx="5" fill="#2a2a2a" stroke="#555" strokeWidth="1.5"/>
-    {/* manubrio */}
-    <path d="M152 91 C162 82 175 76 195 72" stroke="#888" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    <path d="M152 91 C145 88 132 84 118 82" stroke="#888" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    {/* punhos */}
-    <rect x="190" y="67" width="18" height="8" rx="4" fill="#333" stroke="#555" strokeWidth="1"/>
-    <rect x="100" y="77" width="18" height="8" rx="4" fill="#333" stroke="#555" strokeWidth="1"/>
-    {/* alavanca freio */}
-    <path d="M198 68 L205 60" stroke="#666" strokeWidth="2" strokeLinecap="round" fill="none"/>
-    {/* retrovisor */}
-    <line x1="196" y1="68" x2="206" y2="56" stroke="#555" strokeWidth="2" strokeLinecap="round"/>
-    <ellipse cx="208" cy="53" rx="7" ry="4.5" fill="#0a1520" stroke="#444" strokeWidth="1"/>
-    <ellipse cx="208" cy="53" rx="5" ry="3" fill="#1db1f1" opacity="0.4"/>
-
-    {/* ══ PAINEL DE INSTRUMENTOS ══════════════════════════════════════ */}
-    <rect x="168" y="75" width="28" height="16" rx="5" fill="#0d0d0d" stroke="#3a3a3a" strokeWidth="1.5"/>
-    {/* tela */}
-    <rect x="170" y="77" width="24" height="12" rx="3" fill="#060f14" stroke="#1db1f1" strokeWidth="0.5" opacity="0.8"/>
-    {/* velocímetro */}
-    <circle cx="176" cy="83" r="4" fill="none" stroke="#ff906d" strokeWidth="1" opacity="0.8"/>
-    <path d="M174 83 L177 80" stroke="#ff906d" strokeWidth="1" strokeLinecap="round"/>
-    <circle cx="188" cy="83" r="4" fill="none" stroke="#1db1f1" strokeWidth="1" opacity="0.8"/>
-    <path d="M186 85 L190 81" stroke="#1db1f1" strokeWidth="1" strokeLinecap="round"/>
-
-    {/* ══ CARENAGEM FRONTAL + FAROL ════════════════════════════════════ */}
-    {/* corpo carenagem */}
-    <path
-      d="M100 82 C90 90 82 100 78 112 C74 124 76 138 84 148 C92 158 106 164 122 162 C136 160 148 150 152 138 C158 122 154 104 146 92 C138 80 124 72 110 72 C106 72 102 76 100 82 Z"
-      fill="#181818" stroke="#333" strokeWidth="2"/>
-    {/* detalhe aerodinâmico */}
-    <path d="M88 100 C92 110 96 124 98 140" stroke="#ff906d" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
-    <path d="M126 74 C134 80 144 90 148 102" stroke="#444" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
-    {/* farol principal */}
-    <path d="M82 104 C82 94 90 86 100 84 C112 82 122 88 124 98 C126 108 118 118 108 118 C96 118 84 114 82 104 Z"
-      fill="#050d14" stroke="#1db1f1" strokeWidth="1.5" filter="url(#glow)"/>
-    <path d="M86 104 C86 96 92 90 100 88 C110 86 118 92 120 100 C122 108 116 114 108 114 C98 114 86 112 86 104 Z"
-      fill="url(#rg_headlight)" opacity="0.9"/>
-    {/* DRL (daytime running light) */}
-    <path d="M84 120 C92 126 106 128 122 124" stroke="#60d0ff" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.7" filter="url(#glow_sm)"/>
-    <path d="M86 124 C94 128 108 130 120 127" stroke="#1db1f1" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4"/>
-
-    {/* ══ PARA-LAMA DIANTEIRO ══════════════════════════════════════════ */}
-    <path d="M76 162 C80 172 96 178 120 174 C138 172 152 164 154 156"
-      stroke="#777" strokeWidth="4.5" strokeLinecap="round" fill="none"/>
-    <path d="M78 168 C82 176 98 182 122 178 C138 176 152 168 154 162"
-      stroke="#404040" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    {/* borda laranja */}
-    <path d="M76 161 C77 160 88 158 100 158" stroke="#ff906d" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
-
-    {/* ══ ESCAPE / SILENCIOSO ══════════════════════════════════════════ */}
-    {/* coletor saindo do motor */}
-    <path d="M340 212 C355 218 372 222 388 220" stroke="#555" strokeWidth="6" strokeLinecap="round" fill="none"/>
-    <path d="M388 220 C406 218 424 214 438 206 C450 200 458 192 460 182"
-      stroke="url(#lg_exhaust)" strokeWidth="10" strokeLinecap="round" fill="none"/>
-    {/* cano interno */}
-    <path d="M388 220 C406 218 424 214 438 206 C450 200 458 192 460 182"
-      stroke="url(#lg_exhaust)" strokeWidth="6" strokeLinecap="round" fill="none" opacity="0.5"/>
-    {/* abas do coletor */}
-    {[352,368,384].map(x=>(
-      <ellipse key={x} cx={x} cy={215+(x-352)*0.05} rx="4" ry="6"
-        fill="#333" stroke="#555" strokeWidth="1"
-        transform={`rotate(-15,${x},${215+(x-352)*0.05})`}/>
-    ))}
-    {/* silencioso (corpo) */}
-    <path
-      d="M440 178 C450 172 462 170 474 172 C482 174 486 180 484 188 C482 196 474 200 464 200 C454 200 442 196 440 188 Z"
-      fill="#383838" stroke="#666" strokeWidth="1.5"/>
-    <path d="M442 180 C454 175 468 175 478 180" stroke="rgba(255,255,255,0.08)" strokeWidth="3" strokeLinecap="round" fill="none"/>
-    {/* ponta */}
-    <ellipse cx="484" cy="184" rx="5" ry="8" fill="#555" stroke="#777" strokeWidth="1.5"/>
-    <ellipse cx="484" cy="184" rx="2.5" ry="4" fill="#222" stroke="#444" strokeWidth="1"/>
-
-    {/* ══ PEDALEIRA / ESTRIBOS ════════════════════════════════════════ */}
-    {/* dianteiro */}
-    <line x1="244" y1="218" x2="228" y2="236" stroke="#555" strokeWidth="3.5" strokeLinecap="round"/>
-    <line x1="228" y1="236" x2="194" y2="234" stroke="#555" strokeWidth="3" strokeLinecap="round"/>
-    <rect x="176" y="231" width="20" height="5" rx="2" fill="#333" stroke="#555" strokeWidth="1"/>
-    {/* traseiro */}
-    <line x1="358" y1="216" x2="372" y2="232" stroke="#555" strokeWidth="3.5" strokeLinecap="round"/>
-    <line x1="372" y1="232" x2="406" y2="230" stroke="#555" strokeWidth="3" strokeLinecap="round"/>
-    <rect x="406" y="227" width="20" height="5" rx="2" fill="#333" stroke="#555" strokeWidth="1"/>
-    {/* alavanca câmbio */}
-    <path d="M242 218 C238 225 232 230 224 232" stroke="#555" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <rect x="218" y="230" width="12" height="4" rx="2" fill="#333" stroke="#444" strokeWidth="1"/>
-
-    {/* ══ DETALHE: VÁLVULA PNEU ═══════════════════════════════════════ */}
-    <line x1="118" y1="159" x2="115" y2="152" stroke="#666" strokeWidth="2" strokeLinecap="round"/>
-    <circle cx="114" cy="150" r="2.5" fill="#444" stroke="#666" strokeWidth="1"/>
-    <line x1="460" y1="156" x2="463" y2="149" stroke="#666" strokeWidth="2" strokeLinecap="round"/>
-    <circle cx="464" cy="148" r="2.5" fill="#444" stroke="#666" strokeWidth="1"/>
+      d="M42 47 Q52 50.5 58 46.5"
+      stroke="#555" strokeWidth="1" strokeLinecap="round" fill="none"
+    />
+    <ellipse cx="58.5" cy="45.8" rx="1" ry="1.5" fill="#666" stroke="#888" strokeWidth="0.4" transform="rotate(-20,58.5,45.8)"/>
   </svg>
 );
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   COMPONENTE PRINCIPAL
-═══════════════════════════════════════════════════════════════════════════ */
+// ══ COMPONENTE PRINCIPAL ════════════════════════════════════════════════════════════
 export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pendingPos, setPendingPos]         = useState<{x:number;y:number}|null>(null);
@@ -435,7 +134,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
   const getNearest = (xPct:number, yPct:number) => {
     let best=MOTO_ZONES[0], bestDist=Infinity;
     MOTO_ZONES.forEach(z=>{ const d=Math.hypot(z.cx-xPct,z.cy-yPct); if(d<bestDist){bestDist=d;best=z;} });
-    return bestDist<20 ? best : null;
+    return bestDist<22 ? best : null;
   };
 
   const getCoords = (e:React.MouseEvent|React.TouchEvent) => {
@@ -476,26 +175,27 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
   return (
     <div className="space-y-4">
 
-      {/* ─ CANVAS ─────────────────────────────────────────────────────── */}
+      {/* ─ CANVAS ──────────────────────────────────────────────────── */}
       <div
         ref={containerRef}
         onClick={handleInteraction}
         onTouchStart={handleInteraction}
         className="relative w-full rounded-2xl overflow-hidden border border-[#282828] cursor-crosshair select-none touch-none"
         style={{
-          paddingBottom:'50%',
-          background:'radial-gradient(ellipse at 50% 65%, #181818 0%, #0a0a0a 100%)',
+          paddingBottom:'100%',
+          background:'radial-gradient(ellipse at 50% 70%, #161616 0%, #080808 100%)',
         }}
       >
-        {/* grid de fundo */}
-        <div className="absolute inset-0 opacity-30"
+        {/* grid sutil */}
+        <div className="absolute inset-0"
           style={{
-            backgroundImage:'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)',
-            backgroundSize:'24px 24px',
-          }}/>
+            backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)',
+            backgroundSize:'16px 16px',
+          }}
+        />
 
         {/* SVG */}
-        <div className="absolute inset-0" style={{pointerEvents:'none'}}>
+        <div className="absolute inset-0 flex items-center justify-center p-4" style={{pointerEvents:'none'}}>
           <MotoSVG/>
         </div>
 
@@ -545,7 +245,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
         {/* Hint */}
         {pins.length===0&&!pendingPos&&(
           <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#333]">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#333]">
               <MapPin className="w-3 h-3 text-[#ff906d]"/>Toque na moto para marcar um dano
             </span>
           </div>
