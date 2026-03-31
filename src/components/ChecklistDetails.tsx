@@ -1,18 +1,60 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   User, Phone, Mail, MapPin, Calendar as CalendarIcon, 
   Bike, Fuel, Disc, Settings as SettingsIcon,
   Ruler, PenTool, CheckCircle2, ArrowLeft,
-  FileText, Download, Trash2, Camera
+  FileText, Download, Trash2, Camera, Loader2
 } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Button } from './UI';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
-export const ChecklistDetails = ({ checklist, onBack }: { checklist: any, onBack: () => void }) => {
+export const ChecklistDetails = ({ checklist: initialChecklist, onBack }: { checklist: any, onBack: () => void }) => {
   const { profile } = useAuth();
+  const [checklist, setChecklist] = useState(initialChecklist);
+  const [updatingIdx, setUpdatingIdx] = useState<number | null>(null);
+
+  // Sync state if prop changes (solves stale data caching across quick renders)
+  React.useEffect(() => {
+    setChecklist(initialChecklist);
+  }, [initialChecklist]);
+
+  const PROCESS_STATUSES = ['PENDENTE', 'EM ANDAMENTO', 'CONCLUÍDO'];
+
+  const handleCycleStatus = async (idx: number) => {
+    if (updatingIdx !== null || !checklist.id) return;
+    setUpdatingIdx(idx);
+    
+    try {
+      const procs = [...checklist.processes];
+      const current = PROCESS_STATUSES.indexOf(procs[idx].status || 'PENDENTE');
+      const nextStatus = PROCESS_STATUSES[(current + 1) % PROCESS_STATUSES.length];
+      procs[idx].status = nextStatus;
+
+      const progress = checklist.status === 'final' 
+        ? 100 
+        : Math.round((procs.filter(p => p.status === 'CONCLUÍDO').length / Math.max(procs.length, 1)) * 100);
+
+      const updatedChecklist = { ...checklist, processes: procs, progress };
+
+      await updateDoc(doc(db, 'checklists', checklist.id), {
+        processes: procs,
+        progress: progress
+      });
+
+      setChecklist(updatedChecklist);
+      toast.success(`Serviço marcado como ${nextStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao atualizar status do serviço');
+    } finally {
+      setUpdatingIdx(null);
+    }
+  };
   
   const generatePDF = () => {
     const doc = new jsPDF();
@@ -187,7 +229,7 @@ export const ChecklistDetails = ({ checklist, onBack }: { checklist: any, onBack
     
     if (checklist.signature) {
       try {
-        doc.addImage(checklist.signature, 'PNG', 25, currentY - 5, 50, 20);
+        doc.addImage(checklist.signature, 'PNG', 130, currentY - 5, 50, 20);
       } catch (e) {
         console.error("Error adding signature to PDF", e);
       }
@@ -222,70 +264,70 @@ export const ChecklistDetails = ({ checklist, onBack }: { checklist: any, onBack
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Cliente */}
-        <div className="bg-[#20201f] p-6 rounded-3xl border border-[#484847] space-y-4">
-          <div className="flex items-center gap-3 text-[#ff906d]">
+        <div className="bg-surface-hover p-6 rounded-3xl border border-border-strong space-y-4">
+          <div className="flex items-center gap-3 text-accent">
             <User className="w-5 h-5" />
             <h4 className="font-headline font-bold text-sm uppercase tracking-widest">Cliente</h4>
           </div>
           <div className="space-y-2">
             <p className="text-lg font-headline font-bold">{checklist.client.name}</p>
-            <p className="text-[#adaaaa] text-xs flex items-center gap-2"><Phone className="w-3 h-3" /> {checklist.client.phone}</p>
-            <p className="text-[#adaaaa] text-xs flex items-center gap-2"><Mail className="w-3 h-3" /> {checklist.client.email}</p>
+            <p className="text-text-muted text-xs flex items-center gap-2"><Phone className="w-3 h-3" /> {checklist.client.phone}</p>
+            <p className="text-text-muted text-xs flex items-center gap-2"><Mail className="w-3 h-3" /> {checklist.client.email}</p>
           </div>
         </div>
 
         {/* Veículo */}
-        <div className="bg-[#20201f] p-6 rounded-3xl border border-[#484847] space-y-4 md:col-span-2">
+        <div className="bg-surface-hover p-6 rounded-3xl border border-border-strong space-y-4 md:col-span-2">
           <div className="flex items-center gap-3 text-[#1db1f1]">
             <Bike className="w-5 h-5" />
             <h4 className="font-headline font-bold text-sm uppercase tracking-widest">Veículo</h4>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">MODELO</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">MODELO</p>
               <p className="text-sm font-bold">{checklist.vehicle.model}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">PLACA</p>
-              <p className="text-sm font-bold text-[#ff906d]">{checklist.vehicle.plate}</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">PLACA</p>
+              <p className="text-sm font-bold text-accent">{checklist.vehicle.plate}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">CATEGORIA</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">CATEGORIA</p>
               <p className="text-sm font-bold">{checklist.vehicle.category}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">ANO / COR</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">ANO / COR</p>
               <p className="text-sm font-bold">{checklist.vehicle.year} / {checklist.vehicle.color}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">CHASSI</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">CHASSI</p>
               <p className="text-sm font-bold">{checklist.vehicle.vin || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">MOTOR</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">MOTOR</p>
               <p className="text-sm font-bold">{checklist.vehicle.engineNumber || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">SEGURADORA</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">SEGURADORA</p>
               <p className="text-sm font-bold">{checklist.vehicle.insurance || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">KM</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">KM</p>
               <p className="text-sm font-bold">{checklist.vehicle.mileage}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">ENTRADA</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">ENTRADA</p>
               <p className="text-sm font-bold">{checklist.vehicle.entryDate}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">SAÍDA PREVISTA</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">SAÍDA PREVISTA</p>
               <p className="text-sm font-bold">{checklist.vehicle.exitDate}</p>
             </div>
             <div className="md:col-span-2">
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest mb-1">COMBUSTÍVEL</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">COMBUSTÍVEL</p>
               <div className="flex items-center gap-2">
-                <div className="h-1.5 flex-1 bg-[#000000] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#ff906d]" style={{ width: `${checklist.vehicle.fuel}%` }} />
+                <div className="h-1.5 flex-1 bg-bg rounded-full overflow-hidden">
+                  <div className="h-full bg-accent" style={{ width: `${checklist.vehicle.fuel}%` }} />
                 </div>
                 <span className="text-[10px] font-bold">{checklist.vehicle.fuel}%</span>
               </div>
@@ -296,16 +338,16 @@ export const ChecklistDetails = ({ checklist, onBack }: { checklist: any, onBack
 
       {/* Mapeamento e Fotos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-[#20201f] p-8 rounded-3xl border border-[#484847] space-y-8">
-          <div className="flex items-center gap-3 text-[#ff906d]">
+        <div className="bg-surface-hover p-8 rounded-3xl border border-border-strong space-y-8">
+          <div className="flex items-center gap-3 text-accent">
             <Disc className="w-5 h-5" />
             <h4 className="font-headline font-bold text-sm uppercase tracking-widest">Mapeamento de Danos</h4>
           </div>
           <div className="space-y-4">
             {checklist.damageMapping.map((d: any, i: number) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-[#000000] rounded-xl border border-white/5">
+              <div key={i} className="flex items-center justify-between p-4 bg-bg rounded-xl border border-white/5">
                 <div>
-                  <p className="text-xs font-bold text-[#ff906d] uppercase tracking-widest mb-1">{d.item}</p>
+                  <p className="text-xs font-bold text-accent uppercase tracking-widest mb-1">{d.item}</p>
                   <p className="text-sm font-body">{d.damage}</p>
                 </div>
                 <CheckCircle2 className="w-4 h-4 text-[#00ff88]" />
@@ -314,39 +356,52 @@ export const ChecklistDetails = ({ checklist, onBack }: { checklist: any, onBack
           </div>
         </div>
 
-        <div className="bg-[#20201f] p-8 rounded-3xl border border-[#484847] space-y-8">
+        <div className="bg-surface-hover p-8 rounded-3xl border border-border-strong space-y-8">
           <div className="flex items-center gap-3 text-[#1db1f1]">
             <SettingsIcon className="w-5 h-5" />
             <h4 className="font-headline font-bold text-sm uppercase tracking-widest">Serviços / Processos</h4>
           </div>
           <div className="space-y-4">
             {checklist.processes?.map((p: any, i: number) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-[#000000] rounded-xl border border-white/5">
-                <div>
-                  <p className="text-sm font-body">{p.name}</p>
+              <button 
+                key={i} 
+                onClick={() => handleCycleStatus(i)}
+                disabled={updatingIdx !== null}
+                className={`w-full flex items-center justify-between p-4 bg-bg rounded-xl border text-left transition-all ${
+                  p.status === 'CONCLUÍDO' ? 'border-[#00ff88]/20 hover:border-[#00ff88]/50' : 
+                  p.status === 'EM ANDAMENTO' ? 'border-accent/20 hover:border-accent/50' : 
+                  'border-white/5 hover:border-[#1db1f1]/50'
+                }`}
+              >
+                <div className="flex-1 pr-4">
+                  <p className="text-sm font-body font-bold">{p.name}</p>
                 </div>
-                <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase ${
-                  p.status === 'CONCLUÍDO' ? 'bg-[#00ff88]/10 text-[#00ff88]' : 
-                  p.status === 'EM ANDAMENTO' ? 'bg-[#ff906d]/10 text-[#ff906d]' : 
-                  'bg-[#1db1f1]/10 text-[#1db1f1]'
-                }`}>
-                  {p.status}
-                </span>
-              </div>
+                {updatingIdx === i ? (
+                  <Loader2 className="w-4 h-4 text-text-muted animate-spin" />
+                ) : (
+                  <span className={`px-2 py-1 flex-shrink-0 text-[10px] font-bold rounded uppercase transition-colors ${
+                    p.status === 'CONCLUÍDO' ? 'bg-[#00ff88]/10 text-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.2)]' : 
+                    p.status === 'EM ANDAMENTO' ? 'bg-accent/10 text-accent shadow-[0_0_10px_rgba(255,144,109,0.2)]' : 
+                    'bg-[#1db1f1]/10 text-[#1db1f1]'
+                  }`}>
+                    {p.status}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
         </div>
       </div>
 
       {/* Fotos */}
-      <div className="bg-[#20201f] p-8 rounded-3xl border border-[#484847] space-y-8">
-        <div className="flex items-center gap-3 text-[#adaaaa]">
+      <div className="bg-surface-hover p-8 rounded-3xl border border-border-strong space-y-8">
+        <div className="flex items-center gap-3 text-text-muted">
           <Camera className="w-5 h-5" />
           <h4 className="font-headline font-bold text-sm uppercase tracking-widest">Galeria de Fotos</h4>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {checklist.photos?.map((url: string, i: number) => (
-            <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-[#484847]">
+            <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-border-strong">
               <img src={url} className="w-full h-full object-cover" />
             </div>
           ))}
@@ -354,17 +409,17 @@ export const ChecklistDetails = ({ checklist, onBack }: { checklist: any, onBack
       </div>
 
       {/* Assinatura */}
-      <div className="bg-[#20201f] p-8 rounded-3xl border border-[#484847] flex flex-col md:flex-row items-center justify-between gap-8">
+      <div className="bg-surface-hover p-8 rounded-3xl border border-border-strong flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="space-y-2 text-center md:text-left">
-          <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-[#adaaaa]">Assinatura do Cliente</h4>
-          <p className="text-[10px] italic text-[#adaaaa]/50">Documento validado digitalmente em {checklist.createdAt?.toDate().toLocaleString()}</p>
+          <h4 className="font-headline font-bold text-sm uppercase tracking-widest text-text-muted">Assinatura do Cliente</h4>
+          <p className="text-[10px] italic text-text-muted/50">Documento validado digitalmente em {checklist.createdAt?.toDate().toLocaleString()}</p>
         </div>
         {checklist.signature ? (
           <div className="bg-white p-4 rounded-2xl w-64 h-32 flex items-center justify-center">
             <img src={checklist.signature} className="max-w-full max-h-full object-contain" />
           </div>
         ) : (
-          <div className="w-64 h-32 border-2 border-dashed border-[#484847] rounded-2xl flex items-center justify-center text-[#adaaaa] text-xs">
+          <div className="w-64 h-32 border-2 border-dashed border-border-strong rounded-2xl flex items-center justify-center text-text-muted text-xs">
             Sem assinatura
           </div>
         )}

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { collection, addDoc, setDoc, doc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
-import { Button, Input, Select } from './UI';
+import { Button, Input, Select, DatePicker } from './UI';
 import { handleFirestoreError, OperationType, uploadImage } from '../lib/utils';
 import { toast } from 'sonner';
 import SignatureCanvas from 'react-signature-canvas';
@@ -34,9 +34,17 @@ const VEHICLE_CATEGORIES = ['Naked','Trail / Adventure','Esportiva','Custom / Cr
 const PROCESS_STATUSES: ProcessItem['status'][] = ['PENDENTE','EM ANDAMENTO','CONCLUÍDO'];
 const STATUS_STYLE: Record<string,string> = {
   'PENDENTE':     'bg-[#1db1f1]/10 text-[#1db1f1] border-[#1db1f1]/30',
-  'EM ANDAMENTO': 'bg-[#ff906d]/10 text-[#ff906d] border-[#ff906d]/30',
+  'EM ANDAMENTO': 'bg-accent/10 text-accent border-accent/30',
   'CONCLUÍDO':    'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30',
 };
+
+const FUEL_OPTIONS = [
+  { label: 'R',     value: '10' },
+  { label: '1/4',   value: '25' },
+  { label: '1/2',   value: '50' },
+  { label: '3/4',   value: '75' },
+  { label: 'Cheio', value: '100' }
+];
 
 // ── Mapeamento de danos ────────────────────────────────────────────
 const MAPPING_ITEMS = [
@@ -62,6 +70,15 @@ const SERVICE_ITEMS = [
 
 const fmt   = (v:number) => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const toNum = (s:string) => { const n=parseFloat(s.replace(',','.')); return isNaN(n)?0:n; };
+
+const Card=({children,className=''}:{children:React.ReactNode;className?:string})=>(
+  <div className={`bg-surface rounded-2xl p-4 sm:p-5 border border-border ${className}`}>{children}</div>
+);
+const SectionTitle=({children,color='bg-accent'}:{children:React.ReactNode;color?:string})=>(
+  <h3 className={`font-headline font-bold text-sm tracking-widest uppercase mb-4 flex items-center gap-2 text-${color}`}>
+    <div className={`w-1 h-4 ${color.startsWith('bg-') ? color : 'bg-'+color} rounded-full`}/>{children}
+  </h3>
+);
 
 export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>void; initialData?:any }) => {
   const { profile } = useAuth();
@@ -109,9 +126,11 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
 
   // ── Captura a assinatura do canvas e salva em formData.signature ──────────
   const captureSignature = () => {
-    if(!sigPad.current || sigPad.current.isEmpty()) return;
-    const dataUrl = sigPad.current.getTrimmedCanvas().toDataURL('image/png');
-    setFormData(p=>({...p, signature: dataUrl}));
+    if(!sigPad.current || typeof sigPad.current.isEmpty !== 'function' || sigPad.current.isEmpty()) return;
+    try {
+      const cvs = sigPad.current.getCanvas();
+      if(cvs) setFormData(p=>({...p, signature: cvs.toDataURL('image/png')}));
+    } catch(e) {}
   };
 
   const handleProcessNameChange=(idx:number,name:string)=>{
@@ -146,13 +165,6 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
   };
   const onDragEnd=()=>{dragIdx.current=null;};
 
-  const handleLogoUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
-    const file=e.target.files?.[0]; if(!file||!auth.currentUser) return;
-    const promise=uploadImage(file,`checklists/${auth.currentUser.uid}/logo_${Date.now()}`);
-    toast.promise(promise,{loading:'Enviando...',success:'Logo carregado!',error:'Erro.'});
-    const url=await promise; setFormData(p=>({...p,logoUrl:url}));
-  };
-
   const handlePhotoUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
     const file=e.target.files?.[0]; if(!file||!auth.currentUser) return;
     const promise=uploadImage(file,`checklists/${auth.currentUser.uid}/${Date.now()}_${file.name}`);
@@ -161,11 +173,35 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
   };
 
   const handleSave=async(status:'draft'|'final')=>{
-    if(!auth.currentUser) return; setLoading(true);
-    // captura assinatura do canvas no momento de salvar
-    const signatureData = (!sigPad.current?.isEmpty?.() ? sigPad.current.getTrimmedCanvas().toDataURL('image/png') : null)
-      || formData.signature || '';
+    if(!auth.currentUser) return; 
+
+    if (status === 'final') {
+      if (!formData.client.name.trim()) {
+        toast.error('O Nome do Cliente é obrigatório para finalizar.');
+        return;
+      }
+      if (!formData.vehicle.plate.trim()) {
+        toast.error('A Placa do Veículo é obrigatória para finalizar.');
+        return;
+      }
+    }
+
+    setLoading(true);
+    
     try{
+      // captura assinatura do canvas no momento de salvar (protegido por try-catch)
+      let signatureData = formData.signature || '';
+      try {
+        if (sigPad.current && typeof sigPad.current.isEmpty === 'function' && !sigPad.current.isEmpty()) {
+          const canvasObj = sigPad.current.getCanvas();
+          if (canvasObj && typeof canvasObj.toDataURL === 'function') {
+            signatureData = canvasObj.toDataURL('image/png');
+          }
+        }
+      } catch (canvasErr) {
+        console.warn('Erro ao extrair imagem do canvas:', canvasErr);
+      }
+
       const processesToSave=formData.processes.map(p=>({...p,price:toNum(p.price)}));
       const data={
         ...formData,
@@ -191,10 +227,12 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
   // ── PDF ─────────────────────────────────────────────────────────────
   const generatePDF=()=>{
     // captura assinatura ao vivo do canvas
-    const sigData: string =
-      (sigPad.current && !sigPad.current.isEmpty?.())
-        ? sigPad.current.getTrimmedCanvas().toDataURL('image/png')
-        : formData.signature;
+    let sigData: string = formData.signature || '';
+    if (sigPad.current && !sigPad.current.isEmpty?.()) {
+      try {
+        sigData = sigPad.current.getTrimmedCanvas().toDataURL('image/png');
+      } catch(e) {}
+    }
 
     const pdf=new jsPDF();
     const dark  :[number,number,number]=[14,14,14];
@@ -295,7 +333,7 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           ? ` (${fmt(toNum(formData.processes[i].price))})` : '';
         pdf.setTextColor(...light);
         pdf.text((formData.processes[i].name+priceStr).substring(0,32),115,listY);
-        const sColor:any=formData.processes[i].status==='CONCLUÍDO'?green
+        const sColor:[number,number,number]=formData.processes[i].status==='CONCLUÍDO'?green
           :formData.processes[i].status==='EM ANDAMENTO'?accent:blue;
         pdf.setTextColor(...sColor); pdf.setFontSize(5);
         pdf.text(formData.processes[i].status,188,listY,{align:'right'});
@@ -373,10 +411,7 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     ...SERVICE_ITEMS.map(v=>({label:v,value:v}))
   ];
 
-  const Card=({children,className=''}:{children:React.ReactNode;className?:string})=>(
-    <div className={`bg-[#1a1a1a] rounded-2xl p-4 sm:p-5 space-y-4 pg-card ${className}`}>{children}</div>
-  );
-  const SectionTitle=({children,color='bg-[#ff906d]'}:{children:React.ReactNode;color?:string})=>(
+  const SectionTitle=({children,color='bg-accent'}:{children:React.ReactNode;color?:string})=>(
     <div className="flex items-center gap-2">
       <div className={`w-1 h-5 ${color} rounded-full`}/>
       <h3 className="font-headline font-bold text-xs sm:text-sm uppercase tracking-widest">{children}</h3>
@@ -386,7 +421,7 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
   return (
     <div className="pb-6 space-y-3 sm:space-y-4">
       <div className="mb-1">
-        <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-[0.2em]">Oficina de Alta Performance</p>
+        <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Oficina de Alta Performance</p>
         <h2 className="font-headline text-xl sm:text-2xl font-bold">Novo Checklist</h2>
       </div>
 
@@ -400,22 +435,6 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         </Button>
       </div>
 
-      {/* Logo */}
-      <Card>
-        <label className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 cursor-pointer group">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#0e0e0e] rounded-2xl border-2 border-dashed border-[#484847] group-hover:border-[#ff906d] flex items-center justify-center overflow-hidden flex-shrink-0 transition-colors">
-            {formData.logoUrl
-              ? <img src={formData.logoUrl} className="w-full h-full object-cover" alt="logo"/>
-              : <Camera className="w-6 h-6 sm:w-7 sm:h-7 text-[#adaaaa] group-hover:text-[#ff906d] transition-colors"/>}
-          </div>
-          <div className="text-center sm:text-left">
-            <p className="font-headline font-bold text-sm">Upload de Logo</p>
-            <p className="text-[#adaaaa] text-xs">PNG ou JPG</p>
-          </div>
-          <input type="file" className="hidden" accept="image/png,image/jpg,image/jpeg" onChange={handleLogoUpload}/>
-        </label>
-      </Card>
-
       {/* Dados do Veículo */}
       <Card>
         <SectionTitle>Dados do Veículo</SectionTitle>
@@ -425,9 +444,9 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           <Input label="Telefone" placeholder="(11) 98888-7777" icon={Phone}
             value={formData.client.phone} onChange={(e:any)=>patchClient('phone',e.target.value)}/>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input label="Data Entrada" type="date" icon={CalendarIcon}
+            <DatePicker label="Data Entrada"
               value={formData.vehicle.entryDate} onChange={(e:any)=>patchVehicle('entryDate',e.target.value)}/>
-            <Input label="Previsão Saída" type="date" icon={CalendarIcon}
+            <DatePicker label="Previsão Saída"
               value={formData.vehicle.exitDate} onChange={(e:any)=>patchVehicle('exitDate',e.target.value)}/>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -456,17 +475,17 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           </button>
         </div>
         {formData.damageMapping.length>0?(
-          <div className="rounded-xl overflow-hidden border border-[#282828]">
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 sm:px-4 py-2 bg-[#0e0e0e]">
-              <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">COMPONENTE</span>
-              <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">DANO</span>
+          <div className="rounded-xl overflow-hidden border border-border">
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 sm:px-4 py-2 bg-bg">
+              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">COMPONENTE</span>
+              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">DANO</span>
               <span className="w-6"/>
             </div>
             <AnimatePresence>
               {formData.damageMapping.map((item,idx)=>(
                 <motion.div key={idx}
                   initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}}
-                  className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center px-3 sm:px-4 py-2.5 border-t border-[#282828]"
+                  className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center px-3 sm:px-4 py-2.5 border-t border-border"
                 >
                   <Select value={item.item}
                     onChange={(e:any)=>{const n=[...formData.damageMapping];n[idx].item=e.target.value;setFormData(p=>({...p,damageMapping:n}));}}
@@ -475,7 +494,7 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
                     onChange={(e:any)=>{const n=[...formData.damageMapping];n[idx].damage=e.target.value;setFormData(p=>({...p,damageMapping:n}));}}
                     options={[{label:'Tipo...',value:''},...DAMAGE_TYPES.map(d=>({label:d,value:d}))]}/>
                   <button onClick={()=>setFormData(p=>({...p,damageMapping:p.damageMapping.filter((_,i)=>i!==idx)}))}
-                    className="p-1.5 text-[#adaaaa] hover:text-red-400 transition-colors">
+                    className="p-1.5 text-text-muted hover:text-red-400 transition-colors">
                     <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4"/>
                   </button>
                 </motion.div>
@@ -483,9 +502,9 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
             </AnimatePresence>
           </div>
         ):(
-          <div className="flex items-center gap-3 py-3 text-[#adaaaa]">
+          <div className="flex items-center gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl text-accent">
             <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"/>
-            <p className="text-xs sm:text-sm">Nenhum dano mapeado. Toque em "Adicionar".</p>
+            <p className="text-xs sm:text-sm font-bold">Nenhum dano mapeado. Toque em "Adicionar" para começar.</p>
           </div>
         )}
       </Card>
@@ -497,9 +516,9 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           {formData.processes.length>0&&(
             <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 px-1 pb-2">
               <span className="w-4"/>
-              <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">SERVIÇO</span>
-              <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">STATUS</span>
-              <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest text-right w-24">VALOR (R$)</span>
+              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">SERVIÇO</span>
+              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">STATUS</span>
+              <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-right w-24">VALOR (R$)</span>
               <span className="w-6"/>
             </div>
           )}
@@ -508,30 +527,30 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
               <motion.div key={idx} draggable
                 onDragStart={()=>onDragStart(idx)} onDragOver={e=>onDragOver(e,idx)} onDragEnd={onDragEnd}
                 initial={{opacity:0,x:16}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-16}}
-                className="py-3 border-b border-[#282828] last:border-0 cursor-grab active:cursor-grabbing"
+                className="py-3 border-b border-border last:border-0 cursor-grab active:cursor-grabbing"
               >
                 <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 items-center">
-                  <GripVertical className="w-4 h-4 text-[#484847] flex-shrink-0"/>
+                  <GripVertical className="w-4 h-4 text-text-muted flex-shrink-0"/>
                   <Select value={proc.name} onChange={(e:any)=>handleProcessNameChange(idx,e.target.value)} options={serviceOptions}/>
                   <button onClick={()=>cycleStatus(idx)}
                     className={`px-2 py-1 rounded-lg text-[9px] font-bold border whitespace-nowrap transition-all ${STATUS_STYLE[proc.status]}`}>
                     {proc.status}
                   </button>
                   <div className="relative w-24">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#adaaaa] text-xs font-bold">R$</span>
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-xs font-bold">R$</span>
                     <input type="number" min="0" step="0.01" placeholder="0,00" value={proc.price}
                       onChange={e=>{const n=[...formData.processes];n[idx]={...n[idx],price:e.target.value};setFormData(p=>({...p,processes:n}));}}
-                      className="w-full bg-[#0e0e0e] rounded-lg pl-7 pr-2 py-2 text-sm font-headline font-bold text-white outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d]"/>
+                      className="w-full bg-bg rounded-lg pl-7 pr-2 py-2 text-sm font-headline font-bold text-text-main outline-none placeholder:text-text-muted focus:ring-1 focus:ring-accent"/>
                   </div>
                   <button onClick={()=>setFormData(p=>({...p,processes:p.processes.filter((_,i)=>i!==idx)}))}
-                    className="p-1.5 text-[#adaaaa] hover:text-red-400"><Trash2 className="w-4 h-4"/></button>
+                    className="p-1.5 text-text-muted hover:text-red-400"><Trash2 className="w-4 h-4"/></button>
                 </div>
                 <div className="flex sm:hidden flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-[#484847] flex-shrink-0"/>
+                    <GripVertical className="w-4 h-4 text-text-muted flex-shrink-0"/>
                     <div className="flex-1"><Select value={proc.name} onChange={(e:any)=>handleProcessNameChange(idx,e.target.value)} options={serviceOptions}/></div>
                     <button onClick={()=>setFormData(p=>({...p,processes:p.processes.filter((_,i)=>i!==idx)}))}
-                      className="p-1.5 text-[#adaaaa] hover:text-red-400 flex-shrink-0"><Trash2 className="w-4 h-4"/></button>
+                      className="p-1.5 text-text-muted hover:text-red-400 flex-shrink-0"><Trash2 className="w-4 h-4"/></button>
                   </div>
                   <div className="flex items-center gap-2 pl-6">
                     <button onClick={()=>cycleStatus(idx)}
@@ -539,10 +558,10 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
                       {proc.status}
                     </button>
                     <div className="relative flex-1">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#adaaaa] text-xs font-bold">R$</span>
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-xs font-bold">R$</span>
                       <input type="number" min="0" step="0.01" placeholder="0,00" value={proc.price}
                         onChange={e=>{const n=[...formData.processes];n[idx]={...n[idx],price:e.target.value};setFormData(p=>({...p,processes:n}));}}
-                        className="w-full bg-[#0e0e0e] rounded-lg pl-7 pr-2 py-2 text-sm font-headline font-bold text-white outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d]"/>
+                        className="w-full bg-bg rounded-lg pl-7 pr-2 py-2 text-sm font-headline font-bold text-text-main outline-none placeholder:text-text-muted focus:ring-1 focus:ring-accent"/>
                     </div>
                   </div>
                 </div>
@@ -551,44 +570,62 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           </AnimatePresence>
         </div>
         <button onClick={()=>setFormData(p=>({...p,processes:[...p.processes,{name:'',status:'PENDENTE',price:''}]}))}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-[#484847] text-[#adaaaa] hover:text-white hover:border-[#ff906d] transition-colors text-xs sm:text-sm font-headline font-bold">
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-border-strong text-text-muted hover:text-text-main hover:border-accent transition-colors text-xs sm:text-sm font-headline font-bold">
           <PlusCircle className="w-4 h-4"/> Inserir novo processo
         </button>
       </Card>
 
       {/* Combustível + KM */}
       <Card>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Fuel className="w-4 h-4 text-[#adaaaa]"/>
-              <span className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Combustível</span>
+              <Fuel className="w-4 h-4 text-text-muted"/>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Nível de Combustível</span>
             </div>
-            <span className="text-[#ff906d] font-headline font-bold text-sm">{formData.vehicle.fuel}%</span>
           </div>
-          <div className="relative">
-            <div className="h-2 bg-[#0e0e0e] rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#ff906d] to-[#ffb347] rounded-full transition-all duration-300"
-                style={{width:`${formData.vehicle.fuel}%`}}/>
-            </div>
-            <input type="range" min="0" max="100" value={formData.vehicle.fuel}
-              onChange={e=>patchVehicle('fuel',e.target.value)}
-              className="absolute inset-0 w-full opacity-0 h-2 cursor-pointer"/>
-          </div>
-          <div className="flex justify-between text-[9px] font-bold text-[#adaaaa] uppercase">
-            <span>Vazio</span><span>Cheio</span>
+          <div className="flex bg-bg rounded-xl p-1 items-center justify-between">
+            {FUEL_OPTIONS.map((opt) => {
+              const currentFuel = parseInt(formData.vehicle.fuel || '0');
+              const optVal = parseInt(opt.value);
+              
+              // Find closest option to highlight if loading old data
+              let closestObj = FUEL_OPTIONS[0];
+              let minDiff = 100;
+              FUEL_OPTIONS.forEach(o => {
+                const diff = Math.abs(parseInt(o.value) - currentFuel);
+                if (diff < minDiff) { minDiff = diff; closestObj = o; }
+              });
+
+              const isActive = closestObj.value === opt.value;
+              
+              return (
+                <button
+                  type="button"
+                  key={opt.value}
+                  onClick={() => patchVehicle('fuel', opt.value)}
+                  className={`flex-1 py-3 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-accent text-bg shadow-md shadow-[#ff906d]/20 scale-[1.02]' 
+                      : 'text-text-muted hover:bg-surface hover:text-text-main'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Gauge className="w-4 h-4 text-[#adaaaa]"/>
-            <span className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Quilometragem</span>
+            <Gauge className="w-4 h-4 text-text-muted"/>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Quilometragem</span>
           </div>
           <div className="flex items-baseline gap-2">
             <input type="number" placeholder="45230" value={formData.vehicle.mileage}
               onChange={e=>patchVehicle('mileage',e.target.value)}
-              className="flex-1 bg-transparent text-2xl sm:text-3xl font-headline font-bold text-white outline-none placeholder:text-[#484847]"/>
-            <span className="text-[#adaaaa] font-headline font-bold text-sm">KM</span>
+              className="flex-1 bg-transparent text-2xl sm:text-3xl font-headline font-bold text-text-main outline-none placeholder:text-text-muted"/>
+            <span className="text-text-muted font-headline font-bold text-sm">KM</span>
           </div>
         </div>
       </Card>
@@ -598,17 +635,17 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         <SectionTitle color="bg-[#1db1f1]">Fotos do Veículo</SectionTitle>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {formData.photos.map((url,i)=>(
-            <div key={i} className="aspect-square bg-[#0e0e0e] rounded-xl overflow-hidden relative group">
+            <div key={i} className="aspect-square bg-bg rounded-xl overflow-hidden relative group">
               <img src={url} className="w-full h-full object-cover" alt={`foto ${i+1}`}/>
               <button onClick={()=>setFormData(p=>({...p,photos:p.photos.filter((_,ii)=>ii!==i)}))}
                 className="absolute top-1 right-1 p-1 bg-black/70 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                <Trash2 className="w-3 h-3 text-white"/>
+                <Trash2 className="w-3 h-3 text-text-main"/>
               </button>
             </div>
           ))}
-          <label className="aspect-square bg-[#0e0e0e] rounded-xl border-2 border-dashed border-[#484847] hover:border-[#ff906d] flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors group">
-            <Camera className="w-5 h-5 text-[#adaaaa] group-hover:text-[#ff906d] transition-colors"/>
-            <span className="text-[9px] font-bold text-[#adaaaa] uppercase">Foto</span>
+          <label className="aspect-square bg-bg rounded-xl border-2 border-dashed border-border-strong hover:border-accent flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors group">
+            <Camera className="w-5 h-5 text-text-muted group-hover:text-accent transition-colors"/>
+            <span className="text-[9px] font-bold text-text-muted uppercase">Foto</span>
             <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload}/>
           </label>
         </div>
@@ -627,25 +664,23 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
             </button>
           </div>
         </div>
-        <AnimatePresence>
-          {showSigPad&&(
-            <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} className="overflow-hidden">
-              <div className="bg-white rounded-xl overflow-hidden h-32 sm:h-36 relative">
-                <SignatureCanvas
-                  ref={sigPad}
-                  penColor="black"
-                  canvasProps={{className:'w-full h-full'}}
-                  onEnd={captureSignature}
-                />
-                <button
-                  onClick={()=>{ sigPad.current?.clear(); setFormData(p=>({...p,signature:''})); }}
-                  className="absolute bottom-2 right-2 px-2 py-1 bg-gray-200 text-gray-800 text-xs font-bold rounded-lg"
-                >LIMPAR</button>
-              </div>
-              <p className="text-[10px] text-[#adaaaa] italic mt-2">Ao assinar, o cliente concorda com o estado atual do veículo.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {showSigPad && (
+          <div className="overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden h-32 sm:h-36 relative">
+              <SignatureCanvas
+                ref={sigPad}
+                penColor="black"
+                canvasProps={{className:'w-full h-full'}}
+                onEnd={captureSignature}
+              />
+              <button
+                onClick={()=>{ sigPad.current?.clear(); setFormData(p=>({...p,signature:''})); }}
+                className="absolute bottom-2 right-2 px-2 py-1 bg-gray-200 text-gray-800 text-xs font-bold rounded-lg"
+              >LIMPAR</button>
+            </div>
+            <p className="text-[10px] text-text-muted italic mt-2">Ao assinar, o cliente concorda com o estado atual do veículo.</p>
+          </div>
+        )}
         {/* preview da assinatura capturada */}
         {formData.signature&&!showSigPad&&(
           <div className="bg-white rounded-xl overflow-hidden h-16 flex items-center justify-center">
@@ -662,21 +697,21 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           value={formData.notes}
           onChange={e=>setFormData(p=>({...p,notes:e.target.value}))}
           rows={3}
-          className="w-full bg-[#0e0e0e] rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d] resize-none"
+          className="w-full bg-bg rounded-xl px-3 py-2.5 text-sm text-text-main outline-none placeholder:text-text-muted focus:ring-1 focus:ring-accent resize-none"
         />
       </Card>
 
       {/* Resumo Financeiro */}
-      <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden pg-card">
+      <div className="bg-surface rounded-2xl overflow-hidden pg-card">
         <button onClick={()=>setShowBreakdown(v=>!v)}
           className="w-full flex items-center justify-between p-4 sm:p-5">
           <div className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-[#ff906d]"/>
+            <DollarSign className="w-4 h-4 text-accent"/>
             <span className="font-headline font-bold text-xs sm:text-sm uppercase tracking-widest">Resumo Financeiro</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="font-headline font-bold text-[#ff906d] text-base sm:text-lg">{fmt(grandTotal)}</span>
-            {showBreakdown?<ChevronUp className="w-4 h-4 text-[#adaaaa]"/>:<ChevronDown className="w-4 h-4 text-[#adaaaa]"/>}
+            <span className="font-headline font-bold text-accent text-base sm:text-lg">{fmt(grandTotal)}</span>
+            {showBreakdown?<ChevronUp className="w-4 h-4 text-text-muted"/>:<ChevronDown className="w-4 h-4 text-text-muted"/>}
           </div>
         </button>
         <AnimatePresence>
@@ -687,39 +722,39 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
                   proc.name?(
                     <div key={idx} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-xs sm:text-sm text-[#adaaaa] truncate pr-2">{proc.name}</span>
+                        <span className="text-xs sm:text-sm text-text-muted truncate pr-2">{proc.name}</span>
                         <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border flex-shrink-0 ${STATUS_STYLE[proc.status]}`}>
                           {proc.status}
                         </span>
                       </div>
                       <span className={`font-headline font-bold text-xs sm:text-sm flex-shrink-0 ${
-                        toNum(proc.price)>0?'text-white':'text-[#484847]'
+                        toNum(proc.price)>0?'text-text-main':'text-text-muted'
                       }`}>{toNum(proc.price)>0?fmt(toNum(proc.price)):'—'}</span>
                     </div>
                   ):null
                 ))}
-                {formData.processes.some(p=>p.name)&&<div className="border-t border-[#282828] pt-2"/>}
+                {formData.processes.some(p=>p.name)&&<div className="border-t border-border pt-2"/>}
                 {servicesTotal>0&&(
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#adaaaa] uppercase tracking-wider">Subtotal Serviços</span>
+                    <span className="text-xs text-text-muted uppercase tracking-wider">Subtotal Serviços</span>
                     <span className="font-headline font-bold text-xs sm:text-sm">{fmt(servicesTotal)}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-[#adaaaa] uppercase tracking-wider whitespace-nowrap">Mão de Obra</span>
+                  <span className="text-xs text-text-muted uppercase tracking-wider whitespace-nowrap">Mão de Obra</span>
                   <div className="relative w-28 sm:w-32">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#adaaaa] text-xs font-bold">R$</span>
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted text-xs font-bold">R$</span>
                     <input type="number" min="0" step="0.01" placeholder="0,00" value={formData.laborFee}
                       onChange={e=>setFormData(p=>({...p,laborFee:e.target.value}))}
-                      className="w-full bg-[#0e0e0e] rounded-lg pl-7 pr-2 py-2 text-xs sm:text-sm font-headline font-bold text-white outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d] text-right"/>
+                      className="w-full bg-bg rounded-lg pl-7 pr-2 py-2 text-xs sm:text-sm font-headline font-bold text-text-main outline-none placeholder:text-text-muted focus:ring-1 focus:ring-accent text-right"/>
                   </div>
                 </div>
                 <div className="bg-gradient-to-r from-[#ff906d]/20 to-transparent rounded-xl p-3 sm:p-4 flex items-center justify-between mt-2">
                   <div>
-                    <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Total Estimado</p>
-                    <p className="text-[10px] text-[#adaaaa] mt-0.5 hidden sm:block">Inclui materiais e mão de obra.</p>
+                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Total Estimado</p>
+                    <p className="text-[10px] text-text-muted mt-0.5 hidden sm:block">Inclui materiais e mão de obra.</p>
                   </div>
-                  <p className="font-headline font-bold text-xl sm:text-2xl text-white">{fmt(grandTotal)}</p>
+                  <p className="font-headline font-bold text-xl sm:text-2xl text-text-main">{fmt(grandTotal)}</p>
                 </div>
               </div>
             </motion.div>

@@ -28,10 +28,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         const userRef = doc(db, 'users', firebaseUser.uid);
 
-        // listener reativo: atualiza profile sempre que o doc mudar
         profileUnsub = onSnapshot(userRef, async (snap) => {
           if (snap.exists()) {
-            setProfile(snap.data());
+            const data = snap.data();
+            if (firebaseUser.photoURL && !data.photoURL) {
+              await setDoc(userRef, { photoURL: firebaseUser.photoURL }, { merge: true });
+              data.photoURL = firebaseUser.photoURL;
+            }
+            setProfile(data);
           } else {
             // primeiro login: cria o documento
             const newProfile = {

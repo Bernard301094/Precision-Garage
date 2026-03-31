@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { logout, db } from '../lib/firebase';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Button, Input } from './UI';
-import { handleFirestoreError, OperationType, uploadImage } from '../lib/utils';
+import { handleFirestoreError, OperationType, uploadImage, getContrastColor } from '../lib/utils';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -20,10 +20,26 @@ const ACCENT_COLORS = [
   { name: 'purple', value: '#a78bfa', label: 'Roxo' },
 ];
 
+const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+  <button
+    onClick={() => onChange(!value)}
+    className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
+      value ? 'bg-accent' : 'bg-border-strong'
+    }`}
+  >
+    <span
+      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${
+        value ? 'left-7' : 'left-1'
+      }`}
+    />
+  </button>
+);
+
 export const SettingsScreen = () => {
   const { profile, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDangerModal, setShowDangerModal] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const [garageData, setGarageData] = useState({
     name:    profile?.garageName || '',
@@ -31,17 +47,66 @@ export const SettingsScreen = () => {
     phone:   profile?.phone      || '',
     email:   profile?.email      || '',
     website: profile?.website    || '',
-    logo:    profile?.photoURL   || ''
+    logo:    profile?.logoUrl    || ''
   });
+
+  const [avatarData, setAvatarData] = useState({
+    photoURL: profile?.photoURL || user?.photoURL || ''
+  });
+
+  const [avatarError, setAvatarError] = useState(false);
 
   // Interface prefs persisted in localStorage
   const [darkMode,    setDarkMode]    = useState(() => localStorage.getItem('pg_dark')    !== 'false');
   const [animations,  setAnimations]  = useState(() => localStorage.getItem('pg_anim')    !== 'false');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('pg_accent') || '#ff906d');
+  
+  const [customColors, setCustomColors] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('pg_custom_colors');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
-  useEffect(() => { localStorage.setItem('pg_dark',   String(darkMode));    }, [darkMode]);
-  useEffect(() => { localStorage.setItem('pg_anim',   String(animations));  }, [animations]);
-  useEffect(() => { localStorage.setItem('pg_accent', accentColor);          }, [accentColor]);
+  const colorInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Sync data dynamically when profile loads (fixes F5 state loss)
+  useEffect(() => {
+    if (profile) {
+      setGarageData(prev => ({
+        ...prev,
+        name:    profile.garageName || prev.name,
+        address: profile.address || prev.address,
+        phone:   profile.phone || prev.phone,
+        email:   profile.email || prev.email,
+        website: profile.website || prev.website,
+        logo:    profile.logoUrl || prev.logo
+      }));
+      setAvatarData(prev => ({
+        ...prev,
+        photoURL: profile.photoURL || user?.photoURL || prev.photoURL
+      }));
+    }
+  }, [profile, user]);
+
+
+  useEffect(() => { 
+    localStorage.setItem('pg_dark', String(darkMode));
+    if (darkMode) document.body.classList.remove('light-mode');
+    else document.body.classList.add('light-mode');
+  }, [darkMode]);
+
+  useEffect(() => { 
+    localStorage.setItem('pg_anim', String(animations));
+    if (!animations) document.documentElement.style.setProperty('--transition-duration', '0s');
+    else document.documentElement.style.removeProperty('--transition-duration');
+  }, [animations]);
+
+  useEffect(() => { 
+    localStorage.setItem('pg_accent', accentColor);
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+    document.documentElement.style.setProperty('--text-on-accent', getContrastColor(accentColor));
+  }, [accentColor]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,7 +115,7 @@ export const SettingsScreen = () => {
       try {
         const url = await uploadImage(file, `logos/${user.uid}/${Date.now()}_${file.name}`);
         setGarageData(prev => ({ ...prev, logo: url }));
-        await updateDoc(doc(db, 'users', user.uid), { photoURL: url });
+        await updateDoc(doc(db, 'users', user.uid), { logoUrl: url });
         resolve(url);
       } catch (err) { reject(err); }
     });
@@ -58,6 +123,24 @@ export const SettingsScreen = () => {
       loading: 'Enviando logo...',
       success: 'Logo atualizado!',
       error:   'Erro ao enviar logo.'
+    });
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    const promise = new Promise<string>(async (resolve, reject) => {
+      try {
+        const url = await uploadImage(file, `avatars/${user.uid}/${Date.now()}_${file.name}`);
+        setAvatarData({ photoURL: url });
+        await updateDoc(doc(db, 'users', user.uid), { photoURL: url });
+        resolve(url);
+      } catch (err) { reject(err); }
+    });
+    toast.promise(promise, {
+      loading: 'Enviando foto...',
+      success: 'Foto de perfil atualizada!',
+      error:   'Erro ao enviar foto.'
     });
   };
 
@@ -171,58 +254,71 @@ export const SettingsScreen = () => {
     } finally { setLoading(false); }
   };
 
-  const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
-    <button
-      onClick={() => onChange(!value)}
-      className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
-        value ? 'bg-[#ff906d]' : 'bg-[#484847]'
-      }`}
-    >
-      <span
-        className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${
-          value ? 'left-7' : 'left-1'
-        }`}
-      />
-    </button>
-  );
 
   return (
     <div className="space-y-6 pb-8">
       <div>
         <h2 className="font-headline text-2xl font-bold">Ajustes</h2>
-        <p className="text-[#adaaaa] text-sm mt-1">Configure a identidade e as ferramentas da sua oficina.</p>
+        <p className="text-text-muted text-sm mt-1">Configure a identidade e as ferramentas da sua oficina.</p>
       </div>
 
       {/* Perfil da Oficina */}
-      <section className="bg-[#1a1a1a] rounded-2xl p-5 space-y-5">
+      <section className="bg-surface rounded-2xl p-5 space-y-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#ff906d]/10 rounded-xl text-[#ff906d]">
+          <div className="p-2 bg-accent/10 rounded-xl text-accent">
             <User className="w-5 h-5" />
           </div>
           <h3 className="font-headline font-bold text-sm uppercase tracking-widest">Perfil da Oficina</h3>
         </div>
 
-        {/* Logo Upload */}
-        <div className="flex flex-col items-center">
-          <label className="group cursor-pointer">
-            <div className="w-28 h-28 bg-[#0e0e0e] rounded-2xl border-2 border-dashed border-[#484847] group-hover:border-[#ff906d] transition-all flex flex-col items-center justify-center gap-2 overflow-hidden relative">
-              {garageData.logo ? (
-                <>
-                  <img src={garageData.logo} className="w-full h-full object-cover" alt="logo" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Camera className="w-6 h-6 text-white" />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Camera className="w-6 h-6 text-[#adaaaa] group-hover:text-[#ff906d] transition-colors" />
-                  <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest text-center px-2">ALTERAR LOGO</span>
-                </>
-              )}
-            </div>
-            <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
-          </label>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          {/* Logo Upload */}
+          <div className="flex flex-col items-center">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3">Logo da Oficina</p>
+            <label className="group cursor-pointer">
+              <div className="w-28 h-28 bg-bg rounded-2xl border-2 border-dashed border-border-strong group-hover:border-accent transition-all flex flex-col items-center justify-center gap-2 overflow-hidden relative">
+                {garageData.logo && !logoError ? (
+                  <>
+                    <img src={garageData.logo} className="w-full h-full object-cover" alt="logo" onError={() => setLogoError(true)} />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="w-6 h-6 text-text-main" />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-6 h-6 text-text-muted group-hover:text-accent transition-colors" />
+                    <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-center px-2">ALTERAR</span>
+                  </>
+                )}
+              </div>
+              <input type="file" className="hidden" accept="image/*" onChange={(e) => { setLogoError(false); handleLogoUpload(e); }} />
+            </label>
+          </div>
+
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3">Sua Foto (Avatar)</p>
+            <label className="group cursor-pointer">
+              <div className="w-28 h-28 bg-bg rounded-full border-2 border-dashed border-border-strong group-hover:border-[#1db1f1] transition-all flex flex-col items-center justify-center gap-2 overflow-hidden relative">
+                {avatarData.photoURL && !avatarError ? (
+                  <>
+                    <img src={avatarData.photoURL} className="w-full h-full object-cover" alt="avatar" onError={() => setAvatarError(true)} />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="w-6 h-6 text-text-main" />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-6 h-6 text-text-muted group-hover:text-[#1db1f1] transition-colors" />
+                    <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest text-center px-2">ALTERAR</span>
+                  </>
+                )}
+              </div>
+              <input type="file" className="hidden" accept="image/*" onChange={(e) => { setAvatarError(false); handleAvatarUpload(e); }} />
+            </label>
+          </div>
         </div>
+
 
         <div className="space-y-4">
           <Input
@@ -271,7 +367,7 @@ export const SettingsScreen = () => {
       </section>
 
       {/* Interface */}
-      <section className="bg-[#1a1a1a] rounded-2xl p-5 space-y-5">
+      <section className="bg-surface rounded-2xl p-5 space-y-5">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#1db1f1]/10 rounded-xl text-[#1db1f1]">
             <Palette className="w-5 h-5" />
@@ -281,86 +377,118 @@ export const SettingsScreen = () => {
 
         {/* Esquema de Cores */}
         <div className="space-y-3">
-          <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Esquema de Cores</p>
-          <div className="flex items-center gap-3">
+          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Esquema de Cores</p>
+          <div className="flex flex-wrap items-center gap-3">
             {ACCENT_COLORS.map(c => (
               <button
                 key={c.name}
                 onClick={() => setAccentColor(c.value)}
                 title={c.label}
-                className={`w-9 h-9 rounded-xl transition-all duration-200 ${
+                className={`w-9 h-9 flex-shrink-0 rounded-xl transition-all duration-200 ${
                   accentColor === c.value
-                    ? 'ring-2 ring-white ring-offset-2 ring-offset-[#1a1a1a] scale-110'
+                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-[#1a1a1a] scale-110'
                     : 'opacity-70 hover:opacity-100'
                 }`}
                 style={{ backgroundColor: c.value }}
               />
             ))}
-            <button className="w-9 h-9 rounded-xl bg-[#484847] flex items-center justify-center text-[#adaaaa] hover:text-white transition-colors">
-              <PlusCircle className="w-4 h-4" />
-            </button>
+            {customColors.map((color, i) => (
+              <button
+                key={`custom-${i}`}
+                onClick={() => setAccentColor(color)}
+                title="Cor Customizada"
+                className={`w-9 h-9 flex-shrink-0 rounded-xl transition-all duration-200 ${
+                  accentColor === color
+                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-[#1a1a1a] scale-110'
+                    : 'opacity-70 hover:opacity-100'
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+            <div className="relative">
+              <input 
+                type="color" 
+                ref={colorInputRef} 
+                className="absolute opacity-0 w-0 h-0" 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAccentColor(val);
+                  if (!ACCENT_COLORS.find(c => c.value === val) && !customColors.includes(val)) {
+                    const next = [...customColors, val].slice(-3); // Keep only last 3 custom colors
+                    setCustomColors(next);
+                    localStorage.setItem('pg_custom_colors', JSON.stringify(next));
+                  }
+                }} 
+              />
+              <button 
+                onClick={() => colorInputRef.current?.click()}
+                className="w-9 h-9 rounded-xl bg-border-strong flex items-center justify-center text-text-muted hover:text-text-main hover:bg-border transition-colors shadow-sm"
+              >
+                <PlusCircle className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Toggles */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between py-3 border-t border-[#282828]">
+          <div className="flex items-center justify-between py-3 border-t border-border">
             <span className="text-sm font-body">Modo Escuro</span>
             <Toggle value={darkMode} onChange={setDarkMode} />
           </div>
-          <div className="flex items-center justify-between py-3 border-t border-[#282828]">
-            <span className="text-sm font-body text-[#adaaaa]">Animações</span>
+          <div className="flex items-center justify-between py-3 border-t border-border">
+            <span className="text-sm font-body text-text-muted">Animações</span>
             <Toggle value={animations} onChange={setAnimations} />
           </div>
         </div>
       </section>
 
       {/* Exportar Dados */}
-      <section className="bg-[#1a1a1a] rounded-2xl p-5 space-y-4">
+      <section className="bg-surface rounded-2xl p-5 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#ff906d]/10 rounded-xl text-[#ff906d]">
+          <div className="p-2 bg-accent/10 rounded-xl text-accent">
             <Download className="w-5 h-5" />
           </div>
           <div>
             <h3 className="font-headline font-bold text-sm uppercase tracking-widest">Exportar Dados</h3>
-            <p className="text-[#adaaaa] text-xs mt-0.5">Gere relatórios técnicos completos de serviços, checklists e histórico financeiro da sua unidade.</p>
+            <p className="text-text-muted text-xs mt-0.5">Gere relatórios técnicos completos de serviços, checklists e histórico financeiro da sua unidade.</p>
           </div>
         </div>
 
         <button
           onClick={handleExportPDF}
           disabled={loading}
-          className="w-full flex items-center gap-4 p-4 bg-[#0e0e0e] rounded-xl hover:bg-[#282828] transition-colors group"
+          className="w-full flex items-center gap-4 p-4 bg-bg rounded-xl hover:bg-border transition-colors group"
         >
           <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
             <Download className="w-5 h-5 text-red-400" />
           </div>
           <div className="text-left">
             <p className="font-headline font-bold text-sm">RELATÓRIO PDF</p>
-            <p className="text-[10px] text-[#adaaaa]">Exportar todos os checklists em PDF</p>
+            <p className="text-[10px] text-text-muted">Exportar todos os checklists em PDF</p>
           </div>
         </button>
 
         <button
           onClick={handleExportExcel}
           disabled={loading}
-          className="w-full flex items-center gap-4 p-4 bg-[#0e0e0e] rounded-xl hover:bg-[#282828] transition-colors group"
+          className="w-full flex items-center gap-4 p-4 bg-bg rounded-xl hover:bg-border transition-colors group"
         >
           <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
             <Download className="w-5 h-5 text-green-400" />
           </div>
           <div className="text-left">
             <p className="font-headline font-bold text-sm">PLANILHA EXCEL</p>
-            <p className="text-[10px] text-[#adaaaa]">Exportar dados em formato .xlsx</p>
+            <p className="text-[10px] text-text-muted">Exportar dados em formato .xlsx</p>
           </div>
         </button>
       </section>
 
       {/* Zona de Perigo */}
-      <section className="bg-[#1a1a1a] rounded-2xl p-5 space-y-4 border border-red-500/20">
+      <section className="bg-surface rounded-2xl p-5 space-y-4 border border-red-500/20">
         <div>
           <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">ZONA DE PERIGO</p>
-          <p className="text-[#adaaaa] text-xs mt-1">Ações irreversíveis para a sua conta de oficina.</p>
+          <p className="text-text-muted text-xs mt-1">Ações irreversíveis para a sua conta de oficina.</p>
         </div>
         <button
           onClick={() => setShowDangerModal(true)}
@@ -384,7 +512,7 @@ export const SettingsScreen = () => {
               initial={{ y: 80, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
-              className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 space-y-5"
+              className="w-full max-w-sm bg-surface rounded-3xl p-6 space-y-5"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-start justify-between">
@@ -394,23 +522,23 @@ export const SettingsScreen = () => {
                   </div>
                   <h4 className="font-headline font-bold text-base">Encerrar Atividades</h4>
                 </div>
-                <button onClick={() => setShowDangerModal(false)} className="p-1 text-[#adaaaa] hover:text-white">
+                <button onClick={() => setShowDangerModal(false)} className="p-1 text-text-muted hover:text-text-main">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-[#adaaaa] text-sm">
+              <p className="text-text-muted text-sm">
                 Esta ação encerrará a sua sessão. Para exclusão permanente de dados, entre em contato com o suporte.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setShowDangerModal(false)}
-                  className="py-3 rounded-xl bg-[#282828] text-white font-headline font-bold text-sm"
+                  className="py-3 rounded-xl bg-border text-text-main font-headline font-bold text-sm"
                 >
                   CANCELAR
                 </button>
                 <button
                   onClick={() => logout()}
-                  className="py-3 rounded-xl bg-red-500 text-white font-headline font-bold text-sm"
+                  className="py-3 rounded-xl bg-red-500 text-text-main font-headline font-bold text-sm"
                 >
                   CONFIRMAR
                 </button>

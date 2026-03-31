@@ -103,21 +103,21 @@ export const MasterItemsScreen = () => {
     <div className="space-y-6 pb-6">
       <div>
         <h2 className="font-headline text-2xl font-bold tracking-tight">GESTÃO DE ITENS</h2>
-        <p className="text-[#adaaaa] text-sm mt-1">
+        <p className="text-text-muted text-sm mt-1">
           Configure os itens mestres para novos checklists de entrada.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-[#0e0e0e] rounded-xl">
+      <div className="flex gap-1 p-1 bg-bg rounded-xl">
         {(['mapping', 'service'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 rounded-lg font-bold font-headline text-xs flex items-center justify-center gap-2 transition-all duration-300 ${
               activeTab === tab
-                ? 'bg-[#1a1a1a] text-[#ff906d] border-b-2 border-[#ff906d]'
-                : 'text-[#adaaaa] hover:text-white'
+                ? 'bg-surface text-accent border-b-2 border-accent'
+                : 'text-text-muted hover:text-text-main'
             }`}
           >
             {tab === 'mapping'
@@ -133,13 +133,13 @@ export const MasterItemsScreen = () => {
         const withPrice = filtered.filter(i => i.price).length;
         return (
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#1a1a1a] rounded-2xl p-4">
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Serviços cadastrados</p>
+            <div className="bg-surface rounded-2xl p-4">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Serviços cadastrados</p>
               <p className="font-headline font-bold text-2xl mt-1">{filtered.length}</p>
             </div>
-            <div className="bg-[#1a1a1a] rounded-2xl p-4">
-              <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Com preço definido</p>
-              <p className="font-headline font-bold text-2xl mt-1 text-[#ff906d]">{withPrice}</p>
+            <div className="bg-surface rounded-2xl p-4">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Com preço definido</p>
+              <p className="font-headline font-bold text-2xl mt-1 text-accent">{withPrice}</p>
             </div>
           </div>
         );
@@ -155,11 +155,11 @@ export const MasterItemsScreen = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ delay: idx * 0.04 }}
-              className="bg-[#1a1a1a] p-4 rounded-2xl flex items-center gap-4 group"
+              className="bg-surface p-4 rounded-2xl flex items-center gap-4 group"
             >
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 item.type === 'mapping'
-                  ? 'text-[#ff906d] bg-[#ff906d]/10'
+                  ? 'text-accent bg-accent/10'
                   : 'text-[#1db1f1] bg-[#1db1f1]/10'
               }`}>
                 {getIcon(item.name)}
@@ -167,11 +167,11 @@ export const MasterItemsScreen = () => {
 
               <div className="flex-1 min-w-0">
                 <h3 className="font-headline font-bold text-sm truncate">{item.name}</h3>
-                <p className="text-[#adaaaa] text-xs truncate">{item.description}</p>
+                <p className="text-text-muted text-xs truncate">{item.description}</p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                     item.type === 'mapping'
-                      ? 'bg-[#ff906d]/10 text-[#ff906d]'
+                      ? 'bg-accent/10 text-accent'
                       : 'bg-[#1db1f1]/10 text-[#1db1f1]'
                   }`}>
                     {item.type === 'mapping' ? 'MAPEAMENTO' : 'SERVIÇO'}
@@ -182,21 +182,21 @@ export const MasterItemsScreen = () => {
                     </span>
                   )}
                   {item.type === 'service' && !item.price && (
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#484847]/30 text-[#adaaaa]">
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-border-strong/30 text-text-muted">
                       Sem preço
                     </span>
                   )}
-                  <span className="text-[9px] text-[#adaaaa]/50">ID: #{item.id.slice(0,6).toUpperCase()}</span>
+                  <span className="text-[9px] text-text-muted/50">ID: #{item.id.slice(0,6).toUpperCase()}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-2 text-[#adaaaa] hover:text-[#1db1f1] transition-colors">
+                <button className="p-2 text-text-muted hover:text-[#1db1f1] transition-colors">
                   <History className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="p-2 text-[#adaaaa] hover:text-red-400 transition-colors"
+                  className="p-2 text-text-muted hover:text-red-400 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -207,19 +207,19 @@ export const MasterItemsScreen = () => {
 
         {filtered.length === 0 && (
           <div className="py-12 text-center space-y-2">
-            <Ruler className="w-8 h-8 text-[#484847] mx-auto" />
-            <p className="text-[#adaaaa] text-sm">Nenhum item cadastrado ainda.</p>
+            <Ruler className="w-8 h-8 text-text-muted mx-auto" />
+            <p className="text-text-muted text-sm">Nenhum item cadastrado ainda.</p>
           </div>
         )}
 
         <button
           onClick={() => setShowModal(true)}
-          className="w-full border-2 border-dashed border-[#484847] hover:border-[#ff906d] rounded-2xl py-8 flex flex-col items-center gap-2 transition-colors group"
+          className="w-full border-2 border-dashed border-border-strong hover:border-accent rounded-2xl py-8 flex flex-col items-center gap-2 transition-colors group"
         >
-          <div className="w-10 h-10 bg-[#1a1a1a] rounded-xl flex items-center justify-center group-hover:bg-[#ff906d]/10 transition-colors">
-            <PlusCircle className="w-5 h-5 text-[#adaaaa] group-hover:text-[#ff906d] transition-colors" />
+          <div className="w-10 h-10 bg-surface rounded-xl flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+            <PlusCircle className="w-5 h-5 text-text-muted group-hover:text-accent transition-colors" />
           </div>
-          <span className="font-headline font-bold text-sm text-[#adaaaa] group-hover:text-white transition-colors">
+          <span className="font-headline font-bold text-sm text-text-muted group-hover:text-text-main transition-colors">
             Novo Item Mestre
           </span>
         </button>
@@ -239,12 +239,12 @@ export const MasterItemsScreen = () => {
               initial={{ y: 80, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
-              className="w-full max-w-sm bg-[#1a1a1a] rounded-3xl p-6 space-y-4"
+              className="w-full max-w-sm bg-surface rounded-3xl p-6 space-y-4"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
                 <h4 className="font-headline font-bold text-base">Novo Item Mestre</h4>
-                <button onClick={() => setShowModal(false)} className="p-1 text-[#adaaaa] hover:text-white">
+                <button onClick={() => setShowModal(false)} className="p-1 text-text-muted hover:text-text-main">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -255,7 +255,7 @@ export const MasterItemsScreen = () => {
                     key={t}
                     onClick={() => setActiveTab(t)}
                     className={`flex-1 py-2 rounded-xl font-headline font-bold text-xs transition-all ${
-                      activeTab === t ? 'bg-[#ff906d] text-black' : 'bg-[#282828] text-[#adaaaa]'
+                      activeTab === t ? 'bg-accent text-black' : 'bg-border text-text-muted'
                     }`}
                   >
                     {t === 'mapping' ? 'MAPEAMENTO' : 'SERVIÇO'}
@@ -286,7 +286,7 @@ export const MasterItemsScreen = () => {
                     className="overflow-hidden"
                   >
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#adaaaa] font-bold text-sm pointer-events-none">R$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold text-sm pointer-events-none">R$</span>
                       <input
                         type="number"
                         min="0"
@@ -294,13 +294,13 @@ export const MasterItemsScreen = () => {
                         placeholder="0,00"
                         value={newPrice}
                         onChange={e => setNewPrice(e.target.value)}
-                        className="w-full bg-[#0e0e0e] rounded-xl pl-10 pr-4 py-3 text-white font-headline font-bold text-lg outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d]"
+                        className="w-full bg-bg rounded-xl pl-10 pr-4 py-3 text-text-main font-headline font-bold text-lg outline-none placeholder:text-text-muted focus:ring-1 focus:ring-accent"
                       />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-text-muted uppercase tracking-widest">
                         Preço base
                       </span>
                     </div>
-                    <p className="text-[10px] text-[#adaaaa] mt-1 px-1">
+                    <p className="text-[10px] text-text-muted mt-1 px-1">
                       Este valor será sugerido automaticamente ao adicionar o serviço no checklist.
                     </p>
                   </motion.div>

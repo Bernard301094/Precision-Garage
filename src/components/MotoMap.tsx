@@ -192,8 +192,8 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
       {!photoUrl && (
         <label className={`flex flex-col items-center justify-center gap-3 w-full rounded-2xl border-2 border-dashed transition-all cursor-pointer ${
           uploading
-            ? 'border-[#ff906d]/40 bg-[#ff906d]/5'
-            : 'border-[#282828] hover:border-[#ff906d]/50 hover:bg-[#ff906d]/5 bg-[#0a0a0a]'
+            ? 'border-accent/40 bg-accent/5'
+            : 'border-border hover:border-accent/50 hover:bg-accent/5 bg-[#0a0a0a]'
         }`}
           style={{ minHeight: 200 }}
         >
@@ -207,20 +207,20 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
           />
           {uploading ? (
             <>
-              <div className="w-10 h-10 border-4 border-[#ff906d] border-t-transparent rounded-full animate-spin" />
-              <p className="text-[#ff906d] text-xs font-bold uppercase tracking-widest">Enviando foto...</p>
+              <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+              <p className="text-accent text-xs font-bold uppercase tracking-widest">Enviando foto...</p>
             </>
           ) : (
             <>
-              <div className="w-16 h-16 rounded-2xl bg-[#1a1a1a] border border-[#282828] flex items-center justify-center">
-                <Camera className="w-8 h-8 text-[#ff906d]" />
+              <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center">
+                <Camera className="w-8 h-8 text-accent" />
               </div>
               <div className="text-center space-y-1 px-4">
-                <p className="text-white font-bold text-sm">Fotografar a Moto</p>
-                <p className="text-[#adaaaa] text-xs">Tire uma foto ou escolha da galeria.</p>
+                <p className="text-text-main font-bold text-sm">Fotografar a Moto</p>
+                <p className="text-text-muted text-xs">Tire uma foto ou escolha da galeria.</p>
                 <p className="text-[#555] text-[10px]">Os pontos de dano serão marcados sobre a sua foto real.</p>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff906d] text-black text-xs font-black uppercase tracking-widest">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-black text-xs font-black uppercase tracking-widest">
                 <ImagePlus className="w-4 h-4" /> ABRIR CÂMERA / GALERIA
               </div>
             </>
@@ -234,12 +234,12 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
           {/* Toolbar acima da foto */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#ff906d]" />
-              <p className="text-[10px] text-[#adaaaa] font-bold uppercase tracking-widest">
+              <MapPin className="w-3.5 h-3.5 text-accent" />
+              <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
                 Toque na foto para marcar dano
               </p>
             </div>
-            <label className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[#282828] bg-[#1a1a1a] text-[#adaaaa] hover:text-white hover:border-[#444] transition-all cursor-pointer">
+            <label className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-border bg-surface text-text-muted hover:text-text-main hover:border-[#444] transition-all cursor-pointer">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -259,7 +259,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
             ref={containerRef}
             onClick={handleImageTap}
             onTouchStart={handleImageTap}
-            className="relative w-full rounded-2xl overflow-hidden border-2 border-[#282828] hover:border-[#ff906d]/40 transition-colors cursor-crosshair select-none touch-none"
+            className="relative w-full rounded-2xl overflow-hidden border-2 border-border hover:border-accent/40 transition-colors cursor-crosshair select-none touch-none"
             style={{ paddingBottom: '62%', minHeight: 180 }}
           >
             {/* Foto real da moto */}
@@ -307,7 +307,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                     {/* Ícone de alerta para grave/crítico */}
                     {parseInt(pin.severity) >= 3 && (
                       <span
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0e0e0e] flex items-center justify-center"
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-bg flex items-center justify-center"
                         style={{ backgroundColor: sv?.color }}
                       >
                         <AlertTriangle className="w-2.5 h-2.5 text-black" />
@@ -324,7 +324,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                           onClick={e => e.stopPropagation()}
                           className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 w-56 bg-[#111]/95 backdrop-blur-sm border border-[#383838] rounded-2xl p-3 shadow-2xl text-left pointer-events-auto"
                         >
-                          <p className="font-bold text-xs text-white leading-tight">{pin.label}</p>
+                          <p className="font-bold text-xs text-text-main leading-tight">{pin.label}</p>
                           <p className="text-[10px] mt-0.5 font-semibold" style={{ color: pinColor }}>{pin.damage}</p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             <span
@@ -332,20 +332,20 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                               style={{ backgroundColor: sv?.color + '22', color: sv?.color }}
                             >{sv?.label}</span>
                             {pin.side && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-[#1a1a1a] text-[#adaaaa]">{pin.side}</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-surface text-text-muted">{pin.side}</span>
                             )}
                           </div>
                           {pin.actions.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {pin.actions.map(a => (
-                                <span key={a} className="text-[8px] px-1.5 py-0.5 rounded bg-[#1e1e1e] text-[#adaaaa] border border-[#2a2a2a] flex items-center gap-0.5">
+                                <span key={a} className="text-[8px] px-1.5 py-0.5 rounded bg-surface text-text-muted border border-[#2a2a2a] flex items-center gap-0.5">
                                   <Wrench className="w-2 h-2" />{a}
                                 </span>
                               ))}
                             </div>
                           )}
                           {pin.notes && (
-                            <p className="text-[9px] text-[#666] mt-1.5 italic leading-relaxed border-t border-[#222] pt-1.5">{pin.notes}</p>
+                            <p className="text-[9px] text-text-muted mt-1.5 italic leading-relaxed border-t border-[#222] pt-1.5">{pin.notes}</p>
                           )}
                           <button
                             onClick={() => { removePin(pin.id); setActivePin(null); }}
@@ -371,7 +371,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                 <motion.span
                   initial={{ scale: 0.3, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="block w-8 h-8 rounded-full border-2 border-[#ff906d] shadow-xl"
+                  className="block w-8 h-8 rounded-full border-2 border-accent shadow-xl"
                   style={{ background: 'rgba(255,144,109,0.3)' }}
                 />
               </div>
@@ -386,7 +386,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                   animate={{ width: 90, height: 90, opacity: 0, x: ripple.x - 45, y: ripple.y - 45 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className="absolute z-30 rounded-full border-2 border-[#ff906d] pointer-events-none"
+                  className="absolute z-30 rounded-full border-2 border-accent pointer-events-none"
                 />
               )}
             </AnimatePresence>
@@ -397,9 +397,9 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                 <motion.span
                   animate={{ y: [0, -5, 0] }}
                   transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
-                  className="flex items-center gap-1.5 text-[10px] font-bold text-white uppercase tracking-widest bg-black/75 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10"
+                  className="flex items-center gap-1.5 text-[10px] font-bold text-text-main uppercase tracking-widest bg-black/75 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10"
                 >
-                  <MapPin className="w-3 h-3 text-[#ff906d]" />Toque para marcar dano
+                  <MapPin className="w-3 h-3 text-accent" />Toque para marcar dano
                 </motion.span>
               </div>
             )}
@@ -407,8 +407,8 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
             {/* ── Contador top-right ── */}
             {pins.length > 0 && (
               <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-xl border border-white/10">
-                <MapPin className="w-3 h-3 text-[#ff906d]" />
-                <span className="text-[10px] font-black text-white">{pins.length}</span>
+                <MapPin className="w-3 h-3 text-accent" />
+                <span className="text-[10px] font-black text-text-main">{pins.length}</span>
               </div>
             )}
           </div>
@@ -424,20 +424,20 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
-            className="bg-[#111] border border-[#ff906d]/30 rounded-2xl overflow-hidden"
+            className="bg-[#111] border border-accent/30 rounded-2xl overflow-hidden"
           >
             {/* Header */}
-            <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-[#1e1e1e]">
+            <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-border">
               <div className="flex items-center gap-2">
                 <span
                   className="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-black text-black flex-shrink-0"
                   style={{ backgroundColor: currentColor }}
                 >{nextNumber}</span>
-                <p className="text-xs font-black text-[#ff906d] uppercase tracking-widest">Registrar Dano #{nextNumber}</p>
+                <p className="text-xs font-black text-accent uppercase tracking-widest">Registrar Dano #{nextNumber}</p>
               </div>
               <button
                 onClick={() => setPendingPos(null)}
-                className="p-1.5 rounded-xl bg-[#1a1a1a] text-[#555] hover:text-white hover:bg-[#222] transition-colors"
+                className="p-1.5 rounded-xl bg-surface text-[#555] hover:text-text-main hover:bg-[#222] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -447,13 +447,13 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
 
               {/* 1 · CATEGORIA */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest">1 · Categoria</p>
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">1 · Categoria</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {(Object.entries(DAMAGE_CATEGORIES) as [DamageCategory, any][]).map(([cat, meta]) => (
                     <button key={cat}
                       onClick={() => { setSelCategory(cat); setSelDamage(meta.items[0]); }}
                       className={`py-2 px-2.5 rounded-xl text-[10px] font-bold border text-left transition-all ${
-                        selCategory === cat ? `${meta.badge} scale-[1.02]` : 'bg-[#0e0e0e] text-[#555] border-[#222] hover:border-[#444]'
+                        selCategory === cat ? `${meta.badge} scale-[1.02]` : 'bg-bg text-[#555] border-[#222] hover:border-[#444]'
                       }`}
                     >
                       <span className="block w-2 h-2 rounded-full mb-1" style={{ backgroundColor: meta.color }} />
@@ -465,14 +465,14 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
 
               {/* 2 · TIPO DE DANO */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest">2 · Tipo de Dano</p>
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">2 · Tipo de Dano</p>
                 <div className="flex flex-wrap gap-1.5">
                   {DAMAGE_CATEGORIES[selCategory].items.map((item: string) => (
                     <button key={item} onClick={() => setSelDamage(item)}
                       className={`py-1.5 px-3 rounded-xl text-[10px] font-bold border transition-all ${
                         selDamage === item
                           ? `${DAMAGE_CATEGORIES[selCategory].badge} scale-[1.03]`
-                          : 'bg-[#0e0e0e] text-[#555] border-[#222] hover:border-[#444]'
+                          : 'bg-bg text-[#555] border-[#222] hover:border-[#444]'
                       }`}
                     >{item}</button>
                   ))}
@@ -481,12 +481,12 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
 
               {/* 3 · SEVERIDADE */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest">3 · Severidade</p>
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">3 · Severidade</p>
                 <div className="grid grid-cols-4 gap-1.5">
                   {SEVERITY_LEVELS.map(sv => (
                     <button key={sv.id} onClick={() => setSelSeverity(sv.id as SeverityId)}
                       className={`flex flex-col items-center py-2.5 px-1 rounded-xl border text-[9px] font-bold transition-all ${
-                        selSeverity === sv.id ? 'border-transparent scale-[1.05] shadow-lg' : 'bg-[#0e0e0e] text-[#555] border-[#222]'
+                        selSeverity === sv.id ? 'border-transparent scale-[1.05] shadow-lg' : 'bg-bg text-[#555] border-[#222]'
                       }`}
                       style={selSeverity === sv.id
                         ? { backgroundColor: sv.color + '22', color: sv.color, borderColor: sv.color + '55' }
@@ -502,14 +502,14 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
 
               {/* 4 · LADO */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest">4 · Lado / Posição</p>
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">4 · Lado / Posição</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SIDE_OPTIONS.map(side => (
                     <button key={side} onClick={() => setSelSide(selSide === side ? '' : side)}
                       className={`py-1.5 px-3 rounded-xl text-[10px] font-bold border transition-all ${
                         selSide === side
                           ? 'bg-[#1db1f1]/15 text-[#1db1f1] border-[#1db1f1]/40 scale-[1.03]'
-                          : 'bg-[#0e0e0e] text-[#555] border-[#222] hover:border-[#444]'
+                          : 'bg-bg text-[#555] border-[#222] hover:border-[#444]'
                       }`}
                     >{side}</button>
                   ))}
@@ -518,7 +518,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
 
               {/* 5 · AÇÕES */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest flex items-center gap-1.5">
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
                   <Wrench className="w-3 h-3" />5 · Ações Recomendadas
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -527,7 +527,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                       className={`py-1.5 px-2.5 rounded-xl text-[10px] font-bold border transition-all ${
                         selActions.includes(action)
                           ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30 scale-[1.03]'
-                          : 'bg-[#0e0e0e] text-[#555] border-[#222] hover:border-[#444]'
+                          : 'bg-bg text-[#555] border-[#222] hover:border-[#444]'
                       }`}
                     >{selActions.includes(action) ? '✓ ' : ''}{action}</button>
                   ))}
@@ -536,7 +536,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
 
               {/* 6 · LABEL & NOTAS */}
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest flex items-center gap-1.5">
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest flex items-center gap-1.5">
                   <StickyNote className="w-3 h-3" />6 · Componente & Observações
                 </p>
                 <input
@@ -544,20 +544,20 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                   placeholder="Ex: Carenagem Lateral Direita"
                   value={customLabel}
                   onChange={e => setCustomLabel(e.target.value)}
-                  className="w-full bg-[#0e0e0e] rounded-xl px-3 py-2.5 text-sm text-white outline-none border border-[#282828] focus:border-[#ff906d] placeholder:text-[#333]"
+                  className="w-full bg-bg rounded-xl px-3 py-2.5 text-sm text-text-main outline-none border border-border focus:border-accent placeholder:text-[#333]"
                 />
                 <textarea
                   placeholder="Observações adicionais..."
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   rows={2}
-                  className="w-full bg-[#0e0e0e] rounded-xl px-3 py-2.5 text-sm text-white outline-none border border-[#282828] focus:border-[#1db1f1] placeholder:text-[#333] resize-none leading-relaxed"
+                  className="w-full bg-bg rounded-xl px-3 py-2.5 text-sm text-text-main outline-none border border-border focus:border-[#1db1f1] placeholder:text-[#333] resize-none leading-relaxed"
                 />
               </div>
 
               {/* Resumo inline */}
-              <div className="flex flex-wrap gap-1.5 items-center p-3 bg-[#0e0e0e] rounded-xl border border-[#1e1e1e]">
-                <span className="text-[9px] font-bold text-[#adaaaa] uppercase mr-1">Resumo:</span>
+              <div className="flex flex-wrap gap-1.5 items-center p-3 bg-bg rounded-xl border border-border">
+                <span className="text-[9px] font-bold text-text-muted uppercase mr-1">Resumo:</span>
                 <span className="text-[9px] px-2 py-0.5 rounded-md font-bold border"
                   style={{ backgroundColor: currentColor + '20', color: currentColor, borderColor: currentColor + '40' }}
                 >{selDamage}</span>
@@ -568,14 +568,14 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                   }}
                 >{SEVERITY_LEVELS.find(s => s.id === selSeverity)?.label}</span>
                 {selSide && <span className="text-[9px] px-2 py-0.5 rounded-md font-bold bg-[#1db1f1]/15 text-[#1db1f1]">{selSide}</span>}
-                {selActions.length > 0 && <span className="text-[9px] text-[#adaaaa]">· {selActions.length} ação(ões)</span>}
+                {selActions.length > 0 && <span className="text-[9px] text-text-muted">· {selActions.length} ação(ões)</span>}
               </div>
 
               {/* Botões */}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setPendingPos(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-[#1a1a1a] text-[#adaaaa] text-xs font-bold border border-[#282828] hover:bg-[#222] transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-surface text-text-muted text-xs font-bold border border-border hover:bg-[#222] transition-colors"
                 >CANCELAR</button>
                 <button
                   onClick={confirmPin}
@@ -594,8 +594,8 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
       {/* ── LISTA DE DANOS REGISTRADOS ── */}
       {pins.length > 0 && (
         <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e1e]">
-            <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
               {pins.length} dano{pins.length > 1 ? 's' : ''} registrado{pins.length > 1 ? 's' : ''}
             </p>
             <button
@@ -621,7 +621,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                       style={{ backgroundColor: pinColor }}
                     >{pin.number}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white truncate">{pin.label}</p>
+                      <p className="text-xs font-bold text-text-main truncate">{pin.label}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <p className="text-[9px] font-bold" style={{ color: pinColor }}>{pin.damage}</p>
                         {sv && (
@@ -629,7 +629,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                             style={{ backgroundColor: sv.color + '22', color: sv.color }}
                           >{sv.label}</span>
                         )}
-                        {pin.side && <span className="text-[8px] text-[#666]">· {pin.side}</span>}
+                        {pin.side && <span className="text-[8px] text-text-muted">· {pin.side}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -650,7 +650,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-4 pb-3 space-y-2.5 border-t border-[#1e1e1e] pt-3">
+                        <div className="px-4 pb-3 space-y-2.5 border-t border-border pt-3">
                           <div className="flex flex-wrap gap-1.5">
                             <span className="text-[9px] px-2 py-0.5 rounded-md font-bold border"
                               style={{ backgroundColor: pinColor + '20', color: pinColor, borderColor: pinColor + '40' }}
@@ -662,14 +662,14 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPh
                           {pin.actions.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {pin.actions.map(a => (
-                                <span key={a} className="text-[8px] px-2 py-0.5 rounded-lg bg-[#1e1e1e] text-[#adaaaa] border border-[#2a2a2a] flex items-center gap-0.5">
+                                <span key={a} className="text-[8px] px-2 py-0.5 rounded-lg bg-surface text-text-muted border border-[#2a2a2a] flex items-center gap-0.5">
                                   <Wrench className="w-2 h-2" />{a}
                                 </span>
                               ))}
                             </div>
                           )}
                           {pin.notes && (
-                            <p className="text-[10px] text-[#666] italic leading-relaxed">{pin.notes}</p>
+                            <p className="text-[10px] text-text-muted italic leading-relaxed">{pin.notes}</p>
                           )}
                           <button
                             onClick={() => { removePin(pin.id); setExpandedPin(null); }}

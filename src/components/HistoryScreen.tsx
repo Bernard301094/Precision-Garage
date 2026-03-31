@@ -105,7 +105,7 @@ export const HistoryScreen = ({
       {/* Stats cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'HOJE', value: stats.today, icon: CalendarIcon, color: 'text-[#ff906d]', bg: 'bg-[#ff906d]/10' },
+          { label: 'HOJE', value: stats.today, icon: CalendarIcon, color: 'text-accent', bg: 'bg-accent/10' },
           { label: 'RASCUNHOS', value: stats.inProgress, icon: Clock, color: 'text-[#1db1f1]', bg: 'bg-[#1db1f1]/10' },
           { label: 'FINALIZADOS', value: stats.completed, icon: CheckCircle2, color: 'text-[#00ff88]', bg: 'bg-[#00ff88]/10' }
         ].map((stat, i) => (
@@ -114,19 +114,19 @@ export const HistoryScreen = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-[#20201f] p-4 rounded-2xl border border-[#484847] flex flex-col gap-2"
+            className="bg-surface-hover p-4 rounded-2xl border border-border-strong flex flex-col gap-2"
           >
             <div className={`p-2 ${stat.bg} rounded-xl ${stat.color} w-fit`}>
               <stat.icon className="w-4 h-4" />
             </div>
             <p className={`text-2xl font-bold font-headline ${stat.color}`}>{stat.value}</p>
-            <p className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">{stat.label}</p>
+            <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest">{stat.label}</p>
           </motion.div>
         ))}
       </div>
 
       {/* Dashboard collapsible */}
-      <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#282828]">
+      <div className="bg-surface rounded-2xl overflow-hidden border border-border">
         <button
           onClick={() => setShowStats(v => !v)}
           className="w-full flex items-center justify-between p-4"
@@ -135,22 +135,22 @@ export const HistoryScreen = ({
             <BarChart2 className="w-4 h-4 text-[#1db1f1]" />
             <span className="font-headline font-bold text-sm uppercase tracking-widest">Dashboard</span>
           </div>
-          {showStats ? <ChevronUp className="w-4 h-4 text-[#adaaaa]" /> : <ChevronDown className="w-4 h-4 text-[#adaaaa]" />}
+          {showStats ? <ChevronUp className="w-4 h-4 text-text-muted" /> : <ChevronDown className="w-4 h-4 text-text-muted" />}
         </button>
         {showStats && (
           <div className="px-4 pb-5 space-y-5">
             {/* Gráfico de barras mensal */}
             <div>
-              <p className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest mb-3">Checklists por Mês</p>
+              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-3">Checklists por Mês</p>
               <div className="flex items-end gap-2 h-20">
                 {monthlyData.map(([month, count]) => (
                   <div key={month} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[8px] font-bold text-[#adaaaa]">{count > 0 ? count : ''}</span>
+                    <span className="text-[8px] font-bold text-text-muted">{count > 0 ? count : ''}</span>
                     <div
-                      className="w-full rounded-t-md bg-[#ff906d] transition-all duration-500"
+                      className="w-full rounded-t-md bg-accent transition-all duration-500"
                       style={{ height: `${(count / maxMonthly) * 60}px`, minHeight: count > 0 ? '4px' : '2px', opacity: count > 0 ? 1 : 0.2 }}
                     />
-                    <span className="text-[7px] text-[#adaaaa] uppercase">{month}</span>
+                    <span className="text-[7px] text-text-muted uppercase">{month}</span>
                   </div>
                 ))}
               </div>
@@ -158,18 +158,18 @@ export const HistoryScreen = ({
             {/* Top serviços */}
             {topServices.length > 0 && (
               <div>
-                <p className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest mb-3">Serviços Mais Usados</p>
+                <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-3">Serviços Mais Usados</p>
                 <div className="space-y-2">
                   {topServices.map(([name, count]) => (
                     <div key={name} className="flex items-center gap-3">
-                      <span className="text-xs text-[#adaaaa] w-36 truncate">{name}</span>
-                      <div className="flex-1 h-2 bg-[#0e0e0e] rounded-full overflow-hidden">
+                      <span className="text-xs text-text-muted w-36 truncate">{name}</span>
+                      <div className="flex-1 h-2 bg-bg rounded-full overflow-hidden">
                         <div
                           className="h-full bg-[#1db1f1] rounded-full"
                           style={{ width: `${(count / maxService) * 100}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-white w-4 text-right">{count}</span>
+                      <span className="text-[10px] font-bold text-text-main w-4 text-right">{count}</span>
                     </div>
                   ))}
                 </div>
@@ -189,30 +189,30 @@ export const HistoryScreen = ({
         />
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">
-            <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#adaaaa] pointer-events-none" />
+            <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
             <input
               type="date"
               value={searchDate}
               onChange={e => setSearchDate(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-[#282828] rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-[#ff906d] [color-scheme:dark]"
+              className="w-full bg-surface border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-text-main outline-none focus:border-accent [color-scheme:dark]"
             />
           </div>
           {searchDate && (
             <button
               onClick={() => setSearchDate('')}
-              className="px-3 py-2.5 text-[#adaaaa] hover:text-white text-xs font-bold bg-[#1a1a1a] border border-[#282828] rounded-xl"
+              className="px-3 py-2.5 text-text-muted hover:text-text-main text-xs font-bold bg-surface border border-border rounded-xl"
             >
               LIMPAR
             </button>
           )}
         </div>
-        <div className="flex gap-2 p-1 bg-[#20201f] rounded-xl border border-[#484847]">
+        <div className="flex gap-2 p-1 bg-surface-hover rounded-xl border border-border-strong">
           {(['all', 'draft', 'final'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                filter === f ? 'bg-[#ff906d] text-[#000000]' : 'text-[#adaaaa] hover:text-white'
+                filter === f ? 'bg-accent text-bg' : 'text-text-muted hover:text-text-main'
               }`}
             >
               {f === 'all' ? 'TODOS' : f === 'draft' ? 'RASCUNHOS' : 'FINALIZADOS'}
@@ -229,7 +229,7 @@ export const HistoryScreen = ({
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.04 }}
-            className="bg-[#20201f] p-4 rounded-2xl border border-[#484847] hover:bg-[#262626] transition-all duration-300"
+            className="bg-surface-hover p-4 rounded-2xl border border-border-strong hover:bg-surface-hover transition-all duration-300"
           >
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -240,17 +240,17 @@ export const HistoryScreen = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <h4 className="font-headline font-bold text-base truncate">{item.vehicle?.model || '-'}</h4>
-                  <span className="px-2 py-0.5 bg-[#000000] text-[9px] font-bold text-[#ff906d] rounded border border-[#ff906d]/20 tracking-widest flex-shrink-0">
+                  <span className="px-2 py-0.5 bg-bg text-[9px] font-bold text-accent rounded border border-accent/20 tracking-widest flex-shrink-0">
                     {item.vehicle?.plate}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-[#adaaaa] text-xs">
+                <div className="flex items-center gap-3 text-text-muted text-xs">
                   <span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.client?.name}</span>
                   <span className="flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> {item.createdAt?.toDate().toLocaleDateString('pt-BR')}</span>
                 </div>
                 {/* Barra de progresso */}
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-1 bg-[#0e0e0e] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1 bg-bg rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
                         item.status === 'final' ? 'bg-[#00ff88]' : 'bg-[#1db1f1]'
@@ -258,7 +258,7 @@ export const HistoryScreen = ({
                       style={{ width: `${item.progress || 0}%` }}
                     />
                   </div>
-                  <span className="text-[9px] font-bold text-[#adaaaa]">{item.progress || 0}%</span>
+                  <span className="text-[9px] font-bold text-text-muted">{item.progress || 0}%</span>
                 </div>
               </div>
             </div>
@@ -279,10 +279,10 @@ export const HistoryScreen = ({
         ))}
         {filtered.length === 0 && (
           <div className="py-20 text-center space-y-4">
-            <div className="w-20 h-20 bg-[#20201f] rounded-full flex items-center justify-center mx-auto text-[#484847]">
+            <div className="w-20 h-20 bg-surface-hover rounded-full flex items-center justify-center mx-auto text-text-muted">
               <AlertCircle className="w-10 h-10" />
             </div>
-            <p className="text-[#adaaaa] font-body">Nenhum registro encontrado.</p>
+            <p className="text-text-muted font-body">Nenhum registro encontrado.</p>
           </div>
         )}
       </div>

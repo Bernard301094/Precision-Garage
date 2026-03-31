@@ -1,9 +1,42 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+:root {
+  --bg: #0e0e0e;
+  --surface: #1a1a1a;
+  --surface-hover: #20201f;
+  --border: #282828;
+  --border-strong: #484847;
+  --text-main: #ffffff;
+  --text-muted: #adaaaa;
+  --accent-color: #ff906d;
+  --text-on-accent: #0e0e0e;
+}
+
+body.light-mode {
+  --bg: #f4f4f4;
+  --surface: #ffffff;
+  --surface-hover: #fafafa;
+  --border: #e0e0e0;
+  --border-strong: #cccccc;
+  --text-main: #111111;
+  --text-muted: #666666;
+  --text-on-accent: #0e0e0e;
+}
+
 @theme {
   --font-headline: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent-color);
+  --color-text-on-accent: var(--text-on-accent);
 }
 
 @layer base {
@@ -13,8 +46,9 @@
   }
 
   body {
-    @apply bg-[#0e0e0e] text-white font-body;
-    /* Evita scroll horizontal em mobile */
+    background-color: var(--bg);
+    color: var(--text-main);
+    font-family: var(--font-body);
     overflow-x: hidden;
     min-height: 100dvh;
   }
@@ -22,30 +56,15 @@
   /* ── Scrollbar discreta ──────────────────────────────────── */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #282828; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
 
   /* ── Safe area para notch / home indicator ───────────────── */
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 12px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 
-  /* ── MODO CLARO ─────────────────────────────────────────── */
-  body.light-mode {
-    @apply bg-[#f4f4f4] text-[#111111];
-  }
-  body.light-mode .pg-surface   { background-color: #ffffff !important; border-color: #e0e0e0 !important; }
-  body.light-mode .pg-surface-2 { background-color: #f4f4f4 !important; }
-  body.light-mode .pg-muted     { color: #666666 !important; }
-  body.light-mode .pg-card      { background-color: #ffffff !important; border-color: #e5e5e5 !important; }
-  body.light-mode .pg-input     { background-color: #f0f0f0 !important; color: #111111 !important; }
-  body.light-mode .pg-border    { border-color: #e0e0e0 !important; }
-  body.light-mode .pg-header    { background-color: rgba(244,244,244,0.95) !important; }
-  body.light-mode .pg-nav       { background-color: rgba(244,244,244,0.98) !important; border-top-color: #e0e0e0 !important; }
-  body.light-mode .pg-text      { color: #111111 !important; }
-  body.light-mode .pg-subtext   { color: #555555 !important; }
-
   /* Drag ghost */
   .drag-ghost { opacity: 0.4; transform: scale(0.97); }
-  .drag-over  { border-top: 2px solid #ff906d; }
+  .drag-over  { border-top: 2px solid var(--accent-color); }
 
   /* ── Responsive container padrão da app ─────────────────── */
   .app-container {
@@ -64,5 +83,13 @@
   }
   @media (min-width: 1280px) {
     .app-container { max-width: 1024px; }
+  }
+
+  /* Override generic inputs to fit theme */
+  input, textarea, select {
+    color: var(--text-main) !important;
+  }
+  ::placeholder {
+    color: var(--text-muted) !important;
   }
 }

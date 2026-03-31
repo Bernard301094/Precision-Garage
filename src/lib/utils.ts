@@ -5,6 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function getContrastColor(hexColor: string) {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#0e0e0e' : '#ffffff';
+}
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -98,6 +108,14 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  console.error('Firestore Error: ', errInfo);
+  
+  const msg = errInfo.error.toLowerCase();
+  if (msg.includes('permission') || msg.includes('missing or insufficient')) {
+    toast.error('Acesso negado: Regras de segurança falharam. Preencha os campos obrigatórios.');
+  } else {
+    toast.error('Houve um erro no banco de dados. Tente novamente.');
+  }
+  
   throw new Error(JSON.stringify(errInfo));
 }
