@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Phone, Calendar as CalendarIcon,
   PlusCircle, Trash2, Camera, Save, CheckCircle2,
   Fuel, Settings as SettingsIcon, Bike, GripVertical,
-  Gauge, DollarSign, PenTool, AlertCircle, ChevronDown, ChevronUp
+  Gauge, DollarSign, PenTool, AlertCircle, ChevronDown, ChevronUp,
+  Map
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import {
@@ -17,6 +18,7 @@ import { toast } from 'sonner';
 import SignatureCanvas from 'react-signature-canvas';
 import jsPDF from 'jspdf';
 import { useAuth } from '../context/AuthContext';
+import { MotoMap, DamagePin } from './MotoMap';
 
 interface MasterItem {
   id: string;
@@ -27,8 +29,8 @@ interface MasterItem {
 
 interface ProcessItem {
   name: string;
-  status: string;
-  price: string; // string para edição livre no input
+  status: 'PENDENTE' | 'EM ANDAMENTO' | 'CONCLUÍDO';
+  price: string;
 }
 
 const DAMAGE_TYPES = ['Risco Leve', 'Risco Profundo', 'Amassado', 'Pintura', 'Trinca', 'Oxidação'];
@@ -41,12 +43,15 @@ const DAMAGE_COLORS: Record<string, string> = {
   'Oxidação':      'bg-amber-600/20 text-amber-500',
 };
 const VEHICLE_CATEGORIES = ['Naked', 'Trail / Adventure', 'Esportiva', 'Custom / Cruiser', 'Scooter', 'Touring', 'Outro'];
+const PROCESS_STATUSES: ProcessItem['status'][] = ['PENDENTE', 'EM ANDAMENTO', 'CONCLUÍDO'];
+const STATUS_STYLE: Record<string, string> = {
+  'PENDENTE':     'bg-[#1db1f1]/10 text-[#1db1f1] border-[#1db1f1]/30',
+  'EM ANDAMENTO': 'bg-[#ff906d]/10 text-[#ff906d] border-[#ff906d]/30',
+  'CONCLUÍDO':    'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30',
+};
 
-// Formata número como moeda BRL
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-// Converte string de input para número
 const toNum = (s: string) => {
   const n = parseFloat(s.replace(',', '.'));
   return isNaN(n) ? 0 : n;
@@ -64,7 +69,11 @@ export const ChecklistScreen = ({
   const [masterItems, setMasterItems] = useState<MasterItem[]>([]);
   const [showSigPad, setShowSigPad] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
+  const [showMotoMap, setShowMotoMap] = useState(false);
   const sigPad = useRef<any>(null);
+
+  // drag state
+  const dragIdx = useRef<number | null>(null);
 
   const [formData, setFormData] = useState({
     logoUrl: initialData?.logoUrl || '',
@@ -76,8 +85,10 @@ export const ChecklistScreen = ({
       vin: '', engineNumber: '', insurance: '', year: ''
     },
     damageMapping: initialData?.damageMapping || [] as any[],
+    damagePins: (initialData?.damagePins || []) as DamagePin[],
     processes: (initialData?.processes || []).map((p: any) => ({
       ...p,
+      status: p.status || 'PENDENTE',
       price: p.price != null ? String(p.price) : ''
     })) as ProcessItem[],
     laborFee: initialData?.laborFee != null ? String(initialData.laborFee) : '',
@@ -86,13 +97,9 @@ export const ChecklistScreen = ({
     photos: initialData?.photos || [] as string[]
   });
 
-  // ─── Cálculo automático ───────────────────────────────────────────
-  const servicesTotal = formData.processes.reduce(
-    (sum, p) => sum + toNum(p.price), 0
-  );
+  const servicesTotal = formData.processes.reduce((sum, p) => sum + toNum(p.price), 0);
   const laborFeeNum   = toNum(formData.laborFee);
   const grandTotal    = servicesTotal + laborFeeNum;
-  // ─────────────────────────────────────────────────────────────────
 
   const patchVehicle = (k: string, v: string) =>
     setFormData(p => ({ ...p, vehicle: { ...p.vehicle, [k]: v } }));
@@ -111,7 +118,6 @@ export const ChecklistScreen = ({
     return () => unsub();
   }, []);
 
-  // Quando um serviço é selecionado, auto-preenche o preço do masterItem
   const handleProcessNameChange = (idx: number, name: string) => {
     const master = masterItems.find(m => m.type === 'service' && m.name === name);
     setFormData(p => {
@@ -124,6 +130,31 @@ export const ChecklistScreen = ({
       return { ...p, processes: procs };
     });
   };
+
+  const cycleStatus = (idx: number) => {
+    setFormData(p => {
+      const procs = [...p.processes];
+      const cur = PROCESS_STATUSES.indexOf(procs[idx].status);
+      procs[idx] = { ...procs[idx], status: PROCESS_STATUSES[(cur + 1) % PROCESS_STATUSES.length] };
+      return { ...p, processes: procs };
+    });
+  };
+
+  // ── Drag & Drop nativo ─────────────────────────────────────
+  const onDragStart = (idx: number) => { dragIdx.current = idx; };
+  const onDragOver  = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdx.current === null || dragIdx.current === idx) return;
+    setFormData(p => {
+      const procs = [...p.processes];
+      const [moved] = procs.splice(dragIdx.current!, 1);
+      procs.splice(idx, 0, moved);
+      dragIdx.current = idx;
+      return { ...p, processes: procs };
+    });
+  };
+  const onDragEnd   = () => { dragIdx.current = null; };
+  // ──────────────────────────────────────────────────────────
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,7 +192,10 @@ export const ChecklistScreen = ({
         status,
         createdBy: auth.currentUser.uid,
         updatedAt: serverTimestamp(),
-        progress: status === 'final' ? 100 : 0
+        progress: status === 'final' ? 100 : Math.round(
+          (formData.processes.filter(p => p.status === 'CONCLUÍDO').length /
+          Math.max(formData.processes.length, 1)) * 100
+        )
       };
       if (initialData?.id) {
         await setDoc(doc(db, 'checklists', initialData.id), data, { merge: true });
@@ -213,7 +247,6 @@ export const ChecklistScreen = ({
     y = drawRow([{label:'VEÍCULO:',value:formData.vehicle.model},{label:'COR:',value:formData.vehicle.color},{label:'PLACA:',value:formData.vehicle.plate},{label:'CATEGORIA:',value:formData.vehicle.category}],y);
     y += 8;
 
-    // Mapeamento + Processos
     const drawSecHdr = (title:string,x:number,secY:number,w:number,color:[number,number,number]) => {
       pdf.setFillColor(...color); pdf.roundedRect(x,secY,w,8,3,3,'F');
       pdf.setTextColor(...dark); pdf.setFontSize(9); pdf.setFont('helvetica','bold');
@@ -235,11 +268,15 @@ export const ChecklistScreen = ({
         const priceStr = toNum(formData.processes[i].price) > 0
           ? ` (${fmt(toNum(formData.processes[i].price))})` : '';
         pdf.text(formData.processes[i].name + priceStr,120,listY);
+        const sColor = formData.processes[i].status === 'CONCLUÍDO' ? [0,200,100] as [number,number,number]
+          : formData.processes[i].status === 'EM ANDAMENTO' ? accent : [29,177,241] as [number,number,number];
+        pdf.setTextColor(...sColor); pdf.setFontSize(5);
+        pdf.text(formData.processes[i].status, 186, listY, {align:'right'});
+        pdf.setTextColor(...light); pdf.setFontSize(7);
       }
       listY+=7;
     }
 
-    // Tabela de valores
     y = Math.max(listY+8, y+40);
     if (y>230){pdf.addPage();pdf.setFillColor(...dark);pdf.rect(0,0,210,297,'F');y=20;}
     pdf.setFillColor(...card);pdf.roundedRect(110,y,80,6+formData.processes.length*6+18,3,3,'F');
@@ -265,13 +302,11 @@ export const ChecklistScreen = ({
     pdf.setFontSize(9);pdf.setFont('helvetica','bold');pdf.setTextColor(...green);
     pdf.text('TOTAL',113,fy);pdf.text(fmt(grandTotal),187,fy,{align:'right'});
 
-    // KM + Combustível
     y = Math.max(fy+12, y+10);
     if(y>250){pdf.addPage();pdf.setFillColor(...dark);pdf.rect(0,0,210,297,'F');y=20;}
     pdf.setFontSize(8);pdf.setTextColor(...muted);
     pdf.text(`KM: ${formData.vehicle.mileage||'-'}   |   COMBUSTÍVEL: ${formData.vehicle.fuel}%`,105,y,{align:'center'});
 
-    // Assinaturas
     const sigY=260;
     pdf.setDrawColor(...border);pdf.line(20,sigY,90,sigY);pdf.line(120,sigY,190,sigY);
     if(formData.signature){try{pdf.addImage(formData.signature,'PNG',25,sigY-18,50,16);}catch{}}
@@ -286,33 +321,26 @@ export const ChecklistScreen = ({
   const mappingOptions = [
     { label: 'Selecione...', value: '' },
     ...masterItems.filter(i => i.type === 'mapping').map(i => ({ label: i.name, value: i.name })),
-    ...([
-      'Carenagem Frontal','Carenagem Lateral','Carenagem Traseira',
-      'Tanque de Combustível','Banco / Assento','Pneu Dianteiro',
-      'Pneu Traseiro','Rodas','Escapamento','Parachoque','Farol','Retrovisor'
-    ]).map(v => ({ label: v, value: v }))
+    ...(['Carenagem Frontal','Carenagem Lateral','Carenagem Traseira','Tanque de Combustível',
+      'Banco / Assento','Pneu Dianteiro','Pneu Traseiro','Rodas','Escapamento','Parachoque','Farol','Retrovisor']
+    ).map(v => ({ label: v, value: v }))
   ];
 
   const serviceOptions = [
     { label: 'Selecione...', value: '' },
     ...masterItems.filter(i => i.type === 'service').map(i => ({ label: i.name, value: i.name })),
-    ...[
-      'Lavagem Técnica Detalhada','Descontaminação de Pintura',
-      'Proteção Cerâmica (Ceramic Coating)','Polimento',
-      'Vitrificação de Pintura','Lavagem Premium','Proteção de 60 dias',
-      'Proteção de 1 ano (Selagem)'
+    ...['Lavagem Técnica Detalhada','Descontaminação de Pintura','Proteção Cerâmica (Ceramic Coating)',
+      'Polimento','Vitrificação de Pintura','Lavagem Premium','Proteção de 60 dias','Proteção de 1 ano (Selagem)'
     ].map(v => ({ label: v, value: v }))
   ];
 
   return (
     <div className="pb-6 space-y-4">
-      {/* Header */}
       <div className="mb-2">
         <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-[0.2em]">Oficina de Alta Performance</p>
         <h2 className="font-headline text-2xl font-bold">Novo Checklist</h2>
       </div>
 
-      {/* Botões topo */}
       <div className="flex gap-3">
         <Button variant="secondary" className="flex-1 h-11" onClick={() => handleSave('draft')} disabled={loading}>
           <Save className="w-4 h-4" /> Salvar Rascunho
@@ -323,7 +351,7 @@ export const ChecklistScreen = ({
         </Button>
       </div>
 
-      {/* Logo Upload */}
+      {/* Logo */}
       <div className="bg-[#1a1a1a] rounded-2xl p-5">
         <label className="flex flex-col items-center gap-3 cursor-pointer group">
           <div className="w-20 h-20 bg-[#0e0e0e] rounded-2xl border-2 border-dashed border-[#484847] group-hover:border-[#ff906d] transition-colors flex items-center justify-center overflow-hidden">
@@ -333,7 +361,7 @@ export const ChecklistScreen = ({
           </div>
           <div className="text-center">
             <p className="font-headline font-bold text-sm">Upload de Logo</p>
-            <p className="text-[#adaaaa] text-xs">Arraste a marca da oficina aqui (PNG ou JPG)</p>
+            <p className="text-[#adaaaa] text-xs">PNG ou JPG</p>
           </div>
           <input type="file" className="hidden" accept="image/png,image/jpg,image/jpeg" onChange={handleLogoUpload} />
         </label>
@@ -370,7 +398,46 @@ export const ChecklistScreen = ({
         </div>
       </div>
 
-      {/* Mapeamento de Danos */}
+      {/* ── MOTO-MAP INTERATIVO ──────────────────────────────── */}
+      <div className="bg-[#1a1a1a] rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-5 bg-[#ff906d] rounded-full" />
+            <h3 className="font-headline font-bold text-sm uppercase tracking-widest">Moto-Map Interativo</h3>
+          </div>
+          <div className="flex items-center gap-3">
+            {formData.damagePins.length > 0 && (
+              <span className="px-2 py-0.5 bg-[#ff906d]/10 text-[#ff906d] text-[10px] font-bold rounded-lg border border-[#ff906d]/20">
+                {formData.damagePins.length} dano(s)
+              </span>
+            )}
+            <button
+              onClick={() => setShowMotoMap(v => !v)}
+              className="text-[#1db1f1] text-xs font-bold flex items-center gap-1"
+            >
+              <Map className="w-4 h-4" />
+              {showMotoMap ? 'OCULTAR' : 'ABRIR MAPA'}
+            </button>
+          </div>
+        </div>
+        <AnimatePresence>
+          {showMotoMap && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <MotoMap
+                pins={formData.damagePins}
+                onChange={(pins) => setFormData(p => ({ ...p, damagePins: pins }))}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Mapeamento de Danos (tabela) */}
       <div className="bg-[#1a1a1a] rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -419,7 +486,7 @@ export const ChecklistScreen = ({
         )}
       </div>
 
-      {/* Processos + preços */}
+      {/* Processos com drag & drop + status */}
       <div className="bg-[#1a1a1a] rounded-2xl p-5 space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-1 h-5 bg-[#ff906d] rounded-full" />
@@ -427,11 +494,11 @@ export const ChecklistScreen = ({
         </div>
 
         <div className="space-y-0">
-          {/* Header da tabela */}
           {formData.processes.length > 0 && (
-            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 px-1 pb-2">
+            <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 px-1 pb-2">
               <span className="w-4" />
               <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">SERVIÇO</span>
+              <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">STATUS</span>
               <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest text-right w-24">VALOR (R$)</span>
               <span className="w-6" />
             </div>
@@ -439,9 +506,14 @@ export const ChecklistScreen = ({
 
           <AnimatePresence>
             {formData.processes.map((proc, idx) => (
-              <motion.div key={idx}
+              <motion.div
+                key={idx}
+                draggable
+                onDragStart={() => onDragStart(idx)}
+                onDragOver={(e) => onDragOver(e, idx)}
+                onDragEnd={onDragEnd}
                 initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }}
-                className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center py-3 border-b border-[#282828] last:border-0"
+                className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 items-center py-3 border-b border-[#282828] last:border-0 cursor-grab active:cursor-grabbing"
               >
                 <GripVertical className="w-4 h-4 text-[#484847] flex-shrink-0" />
                 <Select
@@ -449,7 +521,16 @@ export const ChecklistScreen = ({
                   onChange={(e:any) => handleProcessNameChange(idx, e.target.value)}
                   options={serviceOptions}
                 />
-                {/* Input de preço inline */}
+                {/* Status badge — toque para ciclar */}
+                <button
+                  onClick={() => cycleStatus(idx)}
+                  title="Toque para mudar status"
+                  className={`px-2 py-1 rounded-lg text-[9px] font-bold border whitespace-nowrap transition-all ${
+                    STATUS_STYLE[proc.status]
+                  }`}
+                >
+                  {proc.status}
+                </button>
                 <div className="relative w-24">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#adaaaa] text-xs font-bold">R$</span>
                   <input
@@ -458,7 +539,7 @@ export const ChecklistScreen = ({
                     value={proc.price}
                     onChange={e => {
                       const n = [...formData.processes];
-                      n[idx].price = e.target.value;
+                      n[idx] = { ...n[idx], price: e.target.value };
                       setFormData(p => ({ ...p, processes: n }));
                     }}
                     className="w-full bg-[#0e0e0e] rounded-lg pl-7 pr-2 py-2 text-sm font-headline font-bold text-white outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d]"
@@ -561,15 +642,14 @@ export const ChecklistScreen = ({
                 <button onClick={() => sigPad.current?.clear()}
                   className="absolute bottom-2 right-2 px-2 py-1 bg-gray-200 text-gray-800 text-xs font-bold rounded-lg">LIMPAR</button>
               </div>
-              <p className="text-[10px] text-[#adaaaa] italic mt-2">Ao assinar, o cliente concorda com o estado atual do veículo conforme mapeado.</p>
+              <p className="text-[10px] text-[#adaaaa] italic mt-2">Ao assinar, o cliente concorda com o estado atual do veículo.</p>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* ─── RESUMO FINANCEIRO ─────────────────────────────────── */}
+      {/* Resumo Financeiro */}
       <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden">
-        {/* Header colapsável */}
         <button
           onClick={() => setShowBreakdown(v => !v)}
           className="w-full flex items-center justify-between p-5"
@@ -580,12 +660,9 @@ export const ChecklistScreen = ({
           </div>
           <div className="flex items-center gap-3">
             <span className="font-headline font-bold text-[#ff906d] text-lg">{fmt(grandTotal)}</span>
-            {showBreakdown
-              ? <ChevronUp className="w-4 h-4 text-[#adaaaa]" />
-              : <ChevronDown className="w-4 h-4 text-[#adaaaa]" />}
+            {showBreakdown ? <ChevronUp className="w-4 h-4 text-[#adaaaa]" /> : <ChevronDown className="w-4 h-4 text-[#adaaaa]" />}
           </div>
         </button>
-
         <AnimatePresence>
           {showBreakdown && (
             <motion.div
@@ -595,12 +672,16 @@ export const ChecklistScreen = ({
               className="overflow-hidden"
             >
               <div className="px-5 pb-5 space-y-3">
-                {/* Itens de serviço */}
                 {formData.processes.map((proc, idx) => (
                   proc.name ? (
                     <div key={idx} className="flex items-center justify-between">
-                      <span className="text-sm text-[#adaaaa] flex-1 truncate pr-4">{proc.name}</span>
-                      <span className={`font-headline font-bold text-sm ${
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-sm text-[#adaaaa] truncate pr-2">{proc.name}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border flex-shrink-0 ${ STATUS_STYLE[proc.status] }`}>
+                          {proc.status}
+                        </span>
+                      </div>
+                      <span className={`font-headline font-bold text-sm flex-shrink-0 ${
                         toNum(proc.price) > 0 ? 'text-white' : 'text-[#484847]'
                       }`}>
                         {toNum(proc.price) > 0 ? fmt(toNum(proc.price)) : '—'}
@@ -608,20 +689,13 @@ export const ChecklistScreen = ({
                     </div>
                   ) : null
                 ))}
-
-                {formData.processes.some(p => p.name) && (
-                  <div className="border-t border-[#282828] pt-2" />
-                )}
-
-                {/* Subtotal serviços */}
+                {formData.processes.some(p => p.name) && <div className="border-t border-[#282828] pt-2" />}
                 {servicesTotal > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-[#adaaaa] uppercase tracking-wider">Subtotal Serviços</span>
                     <span className="font-headline font-bold text-sm">{fmt(servicesTotal)}</span>
                   </div>
                 )}
-
-                {/* Mão de obra */}
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-xs text-[#adaaaa] uppercase tracking-wider whitespace-nowrap">Mão de Obra</span>
                   <div className="relative w-32">
@@ -634,16 +708,12 @@ export const ChecklistScreen = ({
                     />
                   </div>
                 </div>
-
-                {/* Total final */}
                 <div className="bg-gradient-to-r from-[#ff906d]/20 to-transparent rounded-xl p-4 flex items-center justify-between mt-2">
                   <div>
                     <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-widest">Valor Total Estimado</p>
-                    <p className="text-[10px] text-[#adaaaa] mt-0.5">Inclui materiais e mão de obra especializada.</p>
+                    <p className="text-[10px] text-[#adaaaa] mt-0.5">Inclui materiais e mão de obra.</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-headline font-bold text-2xl text-white">{fmt(grandTotal)}</p>
-                  </div>
+                  <p className="font-headline font-bold text-2xl text-white">{fmt(grandTotal)}</p>
                 </div>
               </div>
             </motion.div>

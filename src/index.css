@@ -10,4 +10,28 @@
   body {
     @apply bg-[#0e0e0e] text-white font-body;
   }
+
+  /* ── MODO CLARO ─────────────────────────────────────────── */
+  body.light-mode {
+    @apply bg-[#f4f4f4] text-[#111111];
+  }
+  body.light-mode .pg-surface   { background-color: #ffffff !important; border-color: #e0e0e0 !important; }
+  body.light-mode .pg-surface-2 { background-color: #f4f4f4 !important; }
+  body.light-mode .pg-muted     { color: #666666 !important; }
+  body.light-mode .pg-card      { background-color: #ffffff !important; border-color: #e5e5e5 !important; }
+  body.light-mode .pg-input     { background-color: #f0f0f0 !important; color: #111111 !important; }
+  body.light-mode .pg-border    { border-color: #e0e0e0 !important; }
+  body.light-mode .pg-header    { background-color: rgba(244,244,244,0.95) !important; }
+  body.light-mode .pg-nav       { background-color: rgba(244,244,244,0.98) !important; border-top-color: #e0e0e0 !important; }
+  body.light-mode .pg-text      { color: #111111 !important; }
+  body.light-mode .pg-subtext   { color: #555555 !important; }
+
+  /* Drag ghost */
+  .drag-ghost {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+  .drag-over {
+    border-top: 2px solid #ff906d;
+  }
 }

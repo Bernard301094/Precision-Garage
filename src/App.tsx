@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  PlusCircle, History, Settings as SettingsIcon, 
+import {
+  PlusCircle, History, Settings as SettingsIcon,
   Bike, ShieldCheck, Bell,
   CheckSquare
 } from 'lucide-react';
@@ -57,6 +57,25 @@ const MainApp = () => {
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
   const [editingChecklist, setEditingChecklist] = useState<any>(null);
 
+  // ── Modo claro / escuro aplicado no <body> ────────────────────
+  const [darkMode] = useState(() => localStorage.getItem('pg_dark') !== 'false');
+  useEffect(() => {
+    const applyTheme = () => {
+      const isDark = localStorage.getItem('pg_dark') !== 'false';
+      document.body.classList.toggle('light-mode', !isDark);
+    };
+    applyTheme();
+    // Re-aplica quando Settings muda o valor
+    window.addEventListener('storage', applyTheme);
+    // Polling leve para sincronizar toggle na mesma tab
+    const interval = setInterval(applyTheme, 500);
+    return () => {
+      window.removeEventListener('storage', applyTheme);
+      clearInterval(interval);
+    };
+  }, []);
+  // ────────────────────────────────────────────────────────────
+
   const tabs = [
     { id: 'checklist', label: 'CHECKLIST', icon: CheckSquare },
     { id: 'history',   label: 'HISTÓRICO', icon: History },
@@ -66,13 +85,12 @@ const MainApp = () => {
   const showingChecklist = activeTab === 'checklist' || !!editingChecklist;
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e] text-white font-body selection:bg-[#ff906d] selection:text-[#000000]">
+    <div className="min-h-screen bg-[#0e0e0e] text-white font-body selection:bg-[#ff906d] selection:text-[#000000] pg-surface-2">
       <Toaster position="top-right" theme="dark" richColors />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0e0e0e]/90 backdrop-blur-xl px-5 py-4">
+      <header className="sticky top-0 z-50 bg-[#0e0e0e]/90 backdrop-blur-xl px-5 py-4 pg-header">
         <div className="flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#1a1a1a] rounded-xl flex items-center justify-center overflow-hidden border border-[#ff906d]/20">
               {profile?.photoURL
@@ -83,13 +101,11 @@ const MainApp = () => {
               <p className="font-headline font-bold text-sm tracking-tight leading-none">
                 PRECISION <span className="text-[#ff906d]">GARAGE</span>
               </p>
-              <p className="text-[10px] text-[#adaaaa] font-bold uppercase tracking-widest leading-none mt-0.5">
+              <p className="text-[10px] text-[#adaaaa] font-bold uppercase tracking-widest leading-none mt-0.5 pg-muted">
                 {profile?.garageName || 'OFICINA DE ALTA PERFORMANCE'}
               </p>
             </div>
           </div>
-
-          {/* Actions */}
           <div className="flex items-center gap-3">
             <button className="relative p-2 text-[#adaaaa] hover:text-white transition-colors">
               <Bell className="w-5 h-5" />
@@ -142,7 +158,7 @@ const MainApp = () => {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0e0e0e]/95 backdrop-blur-xl border-t border-[#1e1e1e] px-2 pb-safe">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0e0e0e]/95 backdrop-blur-xl border-t border-[#1e1e1e] px-2 pb-safe pg-nav">
         <div className="flex items-center justify-around">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id && !selectedChecklist;
@@ -154,7 +170,7 @@ const MainApp = () => {
                   setEditingChecklist(null);
                   setActiveTab(tab.id as any);
                 }}
-                className={`flex flex-col items-center gap-1 py-3 px-6 transition-all duration-300 ${
+                className={`relative flex flex-col items-center gap-1 py-3 px-6 transition-all duration-300 ${
                   isActive ? 'text-[#ff906d]' : 'text-[#adaaaa]'
                 }`}
               >
