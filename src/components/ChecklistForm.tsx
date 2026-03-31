@@ -18,7 +18,40 @@ import { useAuth } from '../context/AuthContext';
 interface MasterItem { id:string; name:string; type:'mapping'|'service'; price?:number; }
 interface ProcessItem { name:string; status:'PENDENTE'|'EM ANDAMENTO'|'CONCLUÍDO'; price:string; }
 
-const DAMAGE_TYPES = ['Risco Leve','Risco Profundo','Amassado','Pintura','Trinca','Oxidação'];
+// ── Tipos de dano (coluna direita do Mapeamento) ───────────────────────────
+const DAMAGE_TYPES = [
+  'Risco Leve',
+  'Risco Profundo',
+  'Risco Superficial',
+  'Marca de Lixa',
+  'Amassado',
+  'Trinca',
+  'Verniz Desplacado',
+  'Pulverização de Tinta',
+  'Pintura Áspera',
+  'Diferença de Cor',
+  'Hologramas',
+  'Oxidar / Enferrujar',
+  'Parafuso Enferrujado',
+  'Batida de Pedras',
+  'Marca d’Água',
+  'Fezes de Aves',
+  'Marca de Insetos',
+  'Cimento',
+  'Piche',
+  'Cola de Adesivo',
+  'Farol Fosco',
+  'Farol Arranhado',
+  'Retrovisor com Mancha',
+  'Plástico Ressecado',
+  'Banco com Rasgo',
+  'Arranhaão nas Manetes',
+  'Pisca com Defeito',
+  'Buzina com Defeito',
+  'Repintura Anterior',
+  'Mancha no Motor',
+];
+
 const VEHICLE_CATEGORIES = ['Naked','Trail / Adventure','Esportiva','Custom / Cruiser','Scooter','Touring','Outro'];
 const PROCESS_STATUSES: ProcessItem['status'][] = ['PENDENTE','EM ANDAMENTO','CONCLUÍDO'];
 const STATUS_STYLE: Record<string,string> = {
@@ -291,7 +324,6 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     toast.success('PDF gerado!');
   };
 
-  // Opções dos selects — masterItems têm prioridade, depois os fixos do checklist físico
   const mappingOptions = [
     {label:'Selecione...',value:''},
     ...masterItems.filter(i=>i.type==='mapping').map(i=>({label:i.name,value:i.name})),
