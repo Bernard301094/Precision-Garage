@@ -35,11 +35,44 @@ export interface FirestoreErrorInfo {
 
 import { auth, storage } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { toast } from 'sonner';
 
 export async function uploadImage(file: File, path: string): Promise<string> {
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  // Verifica autenticação antes de tentar
+  if (!auth.currentUser) {
+    toast.error('Você precisa estar logado para enviar imagens.');
+    throw new Error('Usuário não autenticado.');
+  }
+
+  // Verifica tamanho máximo (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Imagem muito grande. Máximo 5MB.');
+    throw new Error('Arquivo muito grande.');
+  }
+
+  try {
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(snapshot.ref);
+    return url;
+  } catch (error: any) {
+    console.error('[uploadImage] Erro:', error?.code, error?.message);
+
+    // Mensagens amigáveis por código de erro do Firebase Storage
+    if (error?.code === 'storage/unauthorized') {
+      toast.error('Sem permissão para upload. Verifique as Storage Rules no Firebase Console.');
+    } else if (error?.code === 'storage/canceled') {
+      toast.error('Upload cancelado.');
+    } else if (error?.code === 'storage/quota-exceeded') {
+      toast.error('Cota de armazenamento excedida.');
+    } else if (error?.code === 'storage/invalid-url') {
+      toast.error('URL de storage inválida. Verifique a configuração do Firebase.');
+    } else {
+      toast.error(`Erro no upload: ${error?.message || 'desconhecido'}`);
+    }
+
+    throw error;
+  }
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
