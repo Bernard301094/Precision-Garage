@@ -52,6 +52,8 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     },
     damageMapping: initialData?.damageMapping || [] as any[],
     damagePins:   (initialData?.damagePins   || []) as DamagePin[],
+    // → URL da foto real da moto usada no MotoMap (Opção D)
+    motoMapPhotoUrl: (initialData?.motoMapPhotoUrl || '') as string,
     processes:    (initialData?.processes    || []).map((p:any)=>({...p,status:p.status||'PENDENTE',price:p.price!=null?String(p.price):''})) as ProcessItem[],
     laborFee: initialData?.laborFee!=null ? String(initialData.laborFee) : '',
     notes:    initialData?.notes    || '',
@@ -126,11 +128,19 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     const signatureData=sigPad.current?.toDataURL()||formData.signature||'';
     try{
       const processesToSave=formData.processes.map(p=>({...p,price:toNum(p.price)}));
-      const data={...formData,processes:processesToSave,laborFee:laborFeeNum,estimatedValue:grandTotal,
-        signature:signatureData,status,createdBy:auth.currentUser.uid,updatedAt:serverTimestamp(),
+      const data={
+        ...formData,
+        processes:processesToSave,
+        laborFee:laborFeeNum,
+        estimatedValue:grandTotal,
+        signature:signatureData,
+        status,
+        createdBy:auth.currentUser.uid,
+        updatedAt:serverTimestamp(),
         progress:status==='final'?100:Math.round(
           (formData.processes.filter(p=>p.status==='CONCLUÍDO').length/Math.max(formData.processes.length,1))*100
-        )};
+        )
+      };
       if(initialData?.id){ await setDoc(doc(db,'checklists',initialData.id),data,{merge:true}); }
       else { await addDoc(collection(db,'checklists'),{...data,createdAt:serverTimestamp()}); }
       toast.success(status==='final'?'Checklist finalizado!':'Rascunho salvo!');
@@ -244,11 +254,10 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     {label:'Selecione...',value:''},
     ...masterItems.filter(i=>i.type==='service').map(i=>({label:i.name,value:i.name})),
     ...['Lavagem Técnica Detalhada','Descontaminação de Pintura','Proteção Cerâmica (Ceramic Coating)',
-      'Polimento','Vitrificação de Pintura','Lavagem Premium','Proteção de 60 dias','Proteção de 1 ano (Selagem)'
+      'Polimento','Vitrificação de Pintura','Lavagem Premium','Proteção de 60 dias','Proteção de 1 ano (Selação)'
     ].map(v=>({label:v,value:v}))
   ];
 
-  // ── CARD helper para seções do form ────────────────────────
   const Card=({children,className=''}:{children:React.ReactNode;className?:string})=>(
     <div className={`bg-[#1a1a1a] rounded-2xl p-4 sm:p-5 space-y-4 pg-card ${className}`}>{children}</div>
   );
@@ -261,13 +270,11 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
 
   return (
     <div className="pb-6 space-y-3 sm:space-y-4">
-      {/* Título */}
       <div className="mb-1">
         <p className="text-[10px] font-bold text-[#adaaaa] uppercase tracking-[0.2em]">Oficina de Alta Performance</p>
         <h2 className="font-headline text-xl sm:text-2xl font-bold">Novo Checklist</h2>
       </div>
 
-      {/* Botões topo */}
       <div className="flex gap-2 sm:gap-3">
         <Button variant="secondary" className="flex-1 h-10 sm:h-11 text-xs sm:text-sm" onClick={()=>handleSave('draft')} disabled={loading}>
           <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Rascunho
@@ -324,7 +331,9 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         </div>
       </Card>
 
-      {/* Moto-Map */}
+      {/* ══════════════════════════════════════════════════════════════
+          MOTO-MAP — Opção D: foto real + pins de dano
+      ══════════════════════════════════════════════════════════════ */}
       <Card>
         <div className="flex items-center justify-between">
           <SectionTitle>Moto-Map Interativo</SectionTitle>
@@ -343,14 +352,25 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         </div>
         <AnimatePresence>
           {showMotoMap&&(
-            <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} className="overflow-hidden">
-              <MotoMap pins={formData.damagePins} onChange={pins=>setFormData(p=>({...p,damagePins:pins}))}/>
+            <motion.div
+              initial={{height:0,opacity:0}}
+              animate={{height:'auto',opacity:1}}
+              exit={{height:0,opacity:0}}
+              className="overflow-hidden"
+            >
+              {/* Opção D: passa a foto real e o callback de troca de foto */}
+              <MotoMap
+                pins={formData.damagePins}
+                onChange={pins => setFormData(p=>({...p,damagePins:pins}))}
+                photoUrl={formData.motoMapPhotoUrl||undefined}
+                onPhotoChange={url => setFormData(p=>({...p,motoMapPhotoUrl:url}))}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </Card>
 
-      {/* Mapeamento de Danos */}
+      {/* Mapeamento de Danos (lista textual, complementa o MotoMap) */}
       <Card>
         <div className="flex items-center justify-between">
           <SectionTitle>Mapeamento de Danos</SectionTitle>
@@ -399,7 +419,6 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         <SectionTitle>Processos</SectionTitle>
         <div className="space-y-0">
           {formData.processes.length>0&&(
-            /* Cabeçalho da tabela — oculto em mobile xs, visível a partir de sm */
             <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 px-1 pb-2">
               <span className="w-4"/>
               <span className="text-[9px] font-bold text-[#adaaaa] uppercase tracking-widest">SERVIÇO</span>
@@ -413,10 +432,8 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
               <motion.div key={idx} draggable
                 onDragStart={()=>onDragStart(idx)} onDragOver={e=>onDragOver(e,idx)} onDragEnd={onDragEnd}
                 initial={{opacity:0,x:16}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-16}}
-                /* Mobile: layout em coluna; sm+: linha */
                 className="py-3 border-b border-[#282828] last:border-0 cursor-grab active:cursor-grabbing"
               >
-                {/* sm+: grade em linha */}
                 <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 items-center">
                   <GripVertical className="w-4 h-4 text-[#484847] flex-shrink-0"/>
                   <Select value={proc.name} onChange={(e:any)=>handleProcessNameChange(idx,e.target.value)} options={serviceOptions}/>
@@ -433,7 +450,6 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
                   <button onClick={()=>setFormData(p=>({...p,processes:p.processes.filter((_,i)=>i!==idx)}))}
                     className="p-1.5 text-[#adaaaa] hover:text-red-400"><Trash2 className="w-4 h-4"/></button>
                 </div>
-                {/* Mobile: layout empilhado */}
                 <div className="flex sm:hidden flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <GripVertical className="w-4 h-4 text-[#484847] flex-shrink-0"/>
