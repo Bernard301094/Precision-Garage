@@ -18,38 +18,16 @@ import { useAuth } from '../context/AuthContext';
 interface MasterItem { id:string; name:string; type:'mapping'|'service'; price?:number; }
 interface ProcessItem { name:string; status:'PENDENTE'|'EM ANDAMENTO'|'CONCLUÍDO'; price:string; }
 
-// ── Tipos de dano (coluna direita do Mapeamento) ───────────────────────────
+// ── Tipos de dano ─────────────────────────────────────────────────
 const DAMAGE_TYPES = [
-  'Risco Leve',
-  'Risco Profundo',
-  'Risco Superficial',
-  'Marca de Lixa',
-  'Amassado',
-  'Trinca',
-  'Verniz Desplacado',
-  'Pulverização de Tinta',
-  'Pintura Áspera',
-  'Diferença de Cor',
-  'Hologramas',
-  'Oxidar / Enferrujar',
-  'Parafuso Enferrujado',
-  'Batida de Pedras',
-  'Marca d’Água',
-  'Fezes de Aves',
-  'Marca de Insetos',
-  'Cimento',
-  'Piche',
-  'Cola de Adesivo',
-  'Farol Fosco',
-  'Farol Arranhado',
-  'Retrovisor com Mancha',
-  'Plástico Ressecado',
-  'Banco com Rasgo',
-  'Arranhaão nas Manetes',
-  'Pisca com Defeito',
-  'Buzina com Defeito',
-  'Repintura Anterior',
-  'Mancha no Motor',
+  'Risco Leve','Risco Profundo','Risco Superficial','Marca de Lixa',
+  'Amassado','Trinca','Verniz Desplacado','Pulverização de Tinta',
+  'Pintura Áspera','Diferença de Cor','Hologramas','Oxidar / Enferrujar',
+  'Parafuso Enferrujado','Batida de Pedras','Marca d’Água','Fezes de Aves',
+  'Marca de Insetos','Cimento','Piche','Cola de Adesivo',
+  'Farol Fosco','Farol Arranhado','Retrovisor com Mancha',
+  'Plástico Ressecado','Banco com Rasgo','Arranhaão nas Manetes',
+  'Pisca com Defeito','Buzina com Defeito','Repintura Anterior','Mancha no Motor',
 ];
 
 const VEHICLE_CATEGORIES = ['Naked','Trail / Adventure','Esportiva','Custom / Cruiser','Scooter','Touring','Outro'];
@@ -60,69 +38,38 @@ const STATUS_STYLE: Record<string,string> = {
   'CONCLUÍDO':    'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30',
 };
 
-// ── Mapeamento de danos (checklist físico) ─────────────────────────────────────
+// ── Mapeamento de danos ────────────────────────────────────────────
 const MAPPING_ITEMS = [
-  'Riscos profundos',
-  'Riscos superficiais',
-  'Marcas de lixa',
-  'Verniz desplacado',
-  'Pulverização de tinta',
-  'Motor com manchas',
-  'Pintura áspera',
-  'Parafusos enferrujados',
-  'Batida de pedras',
-  'Marcas d’água',
-  'Fezes de aves',
-  'Marcas de insetos',
-  'Cimento',
-  'Piche',
-  'Piscas com defeito',
-  'Buzina com defeito',
-  'Plásticos ressecados',
-  'Diferença de cor',
-  'Cola de adesivo',
-  'Farol fosco ou arranhado',
-  'Repintura',
-  'Retrovisor com manchas',
-  'Hologramas',
-  'Banco com rasgo',
-  'Arranhaão nas manetes',
+  'Riscos profundos','Riscos superficiais','Marcas de lixa','Verniz desplacado',
+  'Pulverização de tinta','Motor com manchas','Pintura áspera','Parafusos enferrujados',
+  'Batida de pedras','Marcas d’água','Fezes de aves','Marcas de insetos',
+  'Cimento','Piche','Piscas com defeito','Buzina com defeito',
+  'Plásticos ressecados','Diferença de cor','Cola de adesivo',
+  'Farol fosco ou arranhado','Repintura','Retrovisor com manchas',
+  'Hologramas','Banco com rasgo','Arranhaão nas manetes',
 ];
 
-// ── Processos / serviços (checklist físico) ───────────────────────────────
+// ── Processos / serviços ─────────────────────────────────────────────
 const SERVICE_ITEMS = [
-  'Full Detail (Detalhamento Completo)',
-  'Proteção de 60 Dias',
-  'Proteção de 1 Ano (Selagem)',
-  'Proteção de 3 Anos (Revestimento Cerâmico)',
-  'Limpeza de Escape em Inox',
-  'Pintura de Escape',
-  'Pintura de Bengalas',
-  'Pintura de Tampas',
-  'Pintura das Manetes',
-  'Encerramento Técnico',
-  'Polimento',
-  'Vitrificação de Plástico',
-  'Vitrificação de Motor',
-  'Vitrificação de Pintura',
-  'Remoção de Piche',
-  'Revitalização de Motor',
-  'Revitalização de Bacalhaus',
-  'Limpeza de Capacete',
-  'Remoção de Contaminação da Pintura',
-  'Lavagem de Manutenção',
+  'Full Detail (Detalhamento Completo)','Proteção de 60 Dias',
+  'Proteção de 1 Ano (Selagem)','Proteção de 3 Anos (Revestimento Cerâmico)',
+  'Limpeza de Escape em Inox','Pintura de Escape','Pintura de Bengalas',
+  'Pintura de Tampas','Pintura das Manetes','Encerramento Técnico','Polimento',
+  'Vitrificação de Plástico','Vitrificação de Motor','Vitrificação de Pintura',
+  'Remoção de Piche','Revitalização de Motor','Revitalização de Bacalhaus',
+  'Limpeza de Capacete','Remoção de Contaminação da Pintura','Lavagem de Manutenção',
 ];
 
-const fmt = (v:number) => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmt   = (v:number) => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const toNum = (s:string) => { const n=parseFloat(s.replace(',','.')); return isNaN(n)?0:n; };
 
 export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>void; initialData?:any }) => {
   const { profile } = useAuth();
-  const [loading, setLoading]           = useState(false);
-  const [masterItems, setMasterItems]   = useState<MasterItem[]>([]);
-  const [showSigPad, setShowSigPad]     = useState(false);
+  const [loading, setLoading]             = useState(false);
+  const [masterItems, setMasterItems]     = useState<MasterItem[]>([]);
+  const [showSigPad, setShowSigPad]       = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
-  const sigPad = useRef<any>(null);
+  const sigPad  = useRef<any>(null);
   const dragIdx = useRef<number|null>(null);
 
   const [formData, setFormData] = useState({
@@ -135,7 +82,9 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
       vin:'', engineNumber:'', insurance:'', year:''
     },
     damageMapping: initialData?.damageMapping || [] as any[],
-    processes:     (initialData?.processes || []).map((p:any)=>({...p,status:p.status||'PENDENTE',price:p.price!=null?String(p.price):''})) as ProcessItem[],
+    processes:     (initialData?.processes || []).map((p:any)=>(
+      {...p, status:p.status||'PENDENTE', price:p.price!=null?String(p.price):''}
+    )) as ProcessItem[],
     laborFee:  initialData?.laborFee!=null ? String(initialData.laborFee) : '',
     notes:     initialData?.notes     || '',
     signature: initialData?.signature || '',
@@ -157,6 +106,13 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     },err=>handleFirestoreError(err,OperationType.LIST,'masterItems'));
     return ()=>unsub();
   },[]);
+
+  // ── Captura a assinatura do canvas e salva em formData.signature ──────────
+  const captureSignature = () => {
+    if(!sigPad.current || sigPad.current.isEmpty()) return;
+    const dataUrl = sigPad.current.getTrimmedCanvas().toDataURL('image/png');
+    setFormData(p=>({...p, signature: dataUrl}));
+  };
 
   const handleProcessNameChange=(idx:number,name:string)=>{
     const master=masterItems.find(m=>m.type==='service'&&m.name===name);
@@ -206,7 +162,9 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
 
   const handleSave=async(status:'draft'|'final')=>{
     if(!auth.currentUser) return; setLoading(true);
-    const signatureData=sigPad.current?.toDataURL()||formData.signature||'';
+    // captura assinatura do canvas no momento de salvar
+    const signatureData = (!sigPad.current?.isEmpty?.() ? sigPad.current.getTrimmedCanvas().toDataURL('image/png') : null)
+      || formData.signature || '';
     try{
       const processesToSave=formData.processes.map(p=>({...p,price:toNum(p.price)}));
       const data={
@@ -230,27 +188,44 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     finally{ setLoading(false); }
   };
 
+  // ── PDF ─────────────────────────────────────────────────────────────
   const generatePDF=()=>{
+    // captura assinatura ao vivo do canvas
+    const sigData: string =
+      (sigPad.current && !sigPad.current.isEmpty?.())
+        ? sigPad.current.getTrimmedCanvas().toDataURL('image/png')
+        : formData.signature;
+
     const pdf=new jsPDF();
-    const dark=[14,14,14] as [number,number,number];
-    const light=[255,255,255] as [number,number,number];
-    const accent=[255,144,109] as [number,number,number];
-    const muted=[173,170,170] as [number,number,number];
-    const card=[32,32,31] as [number,number,number];
-    const border=[72,72,71] as [number,number,number];
-    const green=[74,222,128] as [number,number,number];
+    const dark  :[number,number,number]=[14,14,14];
+    const light :[number,number,number]=[255,255,255];
+    const accent:[number,number,number]=[255,144,109];
+    const blue  :[number,number,number]=[29,177,241];
+    const muted :[number,number,number]=[173,170,170];
+    const card  :[number,number,number]=[32,32,31];
+    const border:[number,number,number]=[72,72,71];
+    const green :[number,number,number]=[74,222,128];
+
+    // ─ fundo
     pdf.setFillColor(...dark); pdf.rect(0,0,210,297,'F');
-    pdf.setFillColor(...card); pdf.rect(0,0,210,50,'F');
+
+    // ─ cabeçalho
+    pdf.setFillColor(...card); pdf.rect(0,0,210,52,'F');
     if(formData.logoUrl||profile?.photoURL){
-      try{ pdf.addImage(formData.logoUrl||profile?.photoURL,'JPEG',15,10,30,30); }catch{}
+      try{ pdf.addImage(formData.logoUrl||profile?.photoURL||'','JPEG',15,11,28,28); }catch{}
     }
     pdf.setTextColor(...light); pdf.setFontSize(22); pdf.setFont('helvetica','bold');
-    pdf.text('CHECKLIST',105,25,{align:'center'});
+    pdf.text('CHECKLIST',105,24,{align:'center'});
     pdf.setFontSize(9); pdf.setFont('helvetica','normal');
     pdf.text(profile?.garageName||'Precision Garage',105,32,{align:'center'});
     pdf.setFontSize(7); pdf.setTextColor(...muted);
-    pdf.text(profile?.address||'',105,37,{align:'center'});
-    let y=58;
+    pdf.text(profile?.address||'',105,38,{align:'center'});
+    pdf.setFontSize(6);
+    pdf.text(`Emissão: ${new Date().toLocaleString('pt-BR')}`,105,44,{align:'center'});
+
+    let y=60;
+
+    // ─ helper: linha de campos
     const drawRow=(cols:{label:string;value:string}[],rowY:number)=>{
       const w=170/cols.length;
       cols.forEach((c,i)=>{
@@ -258,68 +233,131 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         pdf.setFontSize(6); pdf.setTextColor(...muted); pdf.setFont('helvetica','normal');
         pdf.text(c.label,22+i*w,rowY+4);
         pdf.setFontSize(8); pdf.setTextColor(...light); pdf.setFont('helvetica','bold');
-        pdf.text(c.value||'-',22+i*w,rowY+9);
+        pdf.text((c.value||'-').substring(0,24),22+i*w,rowY+9);
       }); return rowY+12;
     };
-    y=drawRow([{label:'NOME:',value:formData.client.name},{label:'TEL:',value:formData.client.phone},{label:'ENTRADA:',value:formData.vehicle.entryDate},{label:'SAÍDA:',value:formData.vehicle.exitDate}],y);
-    y=drawRow([{label:'VEÍCULO:',value:formData.vehicle.model},{label:'COR:',value:formData.vehicle.color},{label:'PLACA:',value:formData.vehicle.plate},{label:'CATEGORIA:',value:formData.vehicle.category}],y);
-    y+=8;
+
+    // ─ dados cliente / veículo
+    y=drawRow([
+      {label:'CLIENTE:',  value:formData.client.name},
+      {label:'TELEFONE:', value:formData.client.phone},
+      {label:'ENTRADA:',  value:formData.vehicle.entryDate},
+      {label:'SAÍDA:',    value:formData.vehicle.exitDate},
+    ],y);
+    y=drawRow([
+      {label:'VEÍCULO:',  value:formData.vehicle.model},
+      {label:'COR:',      value:formData.vehicle.color},
+      {label:'PLACA:',    value:formData.vehicle.plate},
+      {label:'CATEGORIA:',value:formData.vehicle.category},
+    ],y);
+
+    // ─ combustível + km
+    y=drawRow([
+      {label:'COMBUSTÍVEL:', value:`${formData.vehicle.fuel}%`},
+      {label:'QUILOMETRAGEM:', value: formData.vehicle.mileage ? `${formData.vehicle.mileage} km` : '-'},
+      {label:'ANO:', value:formData.vehicle.year||'-'},
+      {label:'Nº CHASSI:', value:formData.vehicle.vin||'-'},
+    ],y);
+
+    y+=6;
+
+    // ─ helper: cabeçalho de seção colorido
     const drawSecHdr=(title:string,x:number,secY:number,w:number,color:[number,number,number])=>{
-      pdf.setFillColor(...color); pdf.roundedRect(x,secY,w,8,3,3,'F');
-      pdf.setTextColor(...dark); pdf.setFontSize(9); pdf.setFont('helvetica','bold');
+      pdf.setFillColor(...color); pdf.roundedRect(x,secY,w,8,2,2,'F');
+      pdf.setTextColor(...dark); pdf.setFontSize(8); pdf.setFont('helvetica','bold');
       pdf.text(title,x+w/2,secY+5.5,{align:'center'});
     };
-    drawSecHdr('MAPEAMENTO',20,y,80,accent); drawSecHdr('PROCESSOS',110,y,80,[29,177,241]);
-    let listY=y+14;
+
+    // ─ mapeamento + processos lado a lado
+    drawSecHdr('MAPEAMENTO DE DANOS',20,y,80,accent);
+    drawSecHdr('PROCESSOS / SERVIÇOS',108,y,82,blue);
+    let listY=y+12;
     const max=Math.max(formData.damageMapping.length,formData.processes.length);
     for(let i=0;i<max;i++){
-      if(listY>245){pdf.addPage();pdf.setFillColor(...dark);pdf.rect(0,0,210,297,'F');listY=20;}
-      pdf.setFontSize(7);pdf.setFont('helvetica','normal');pdf.setTextColor(...light);
-      if(formData.damageMapping[i]){
-        pdf.setDrawColor(...border);pdf.circle(25,listY-1,1.5,'S');
-        pdf.text(`${formData.damageMapping[i].item} — ${formData.damageMapping[i].damage}`,30,listY);
+      if(listY>248){
+        pdf.addPage();
+        pdf.setFillColor(...dark); pdf.rect(0,0,210,297,'F');
+        listY=15;
       }
-      if(formData.processes[i]){
-        pdf.setDrawColor(...border);pdf.circle(115,listY-1,1.5,'S');
-        const priceStr=toNum(formData.processes[i].price)>0?` (${fmt(toNum(formData.processes[i].price))})`:""
-        pdf.text(formData.processes[i].name+priceStr,120,listY);
-        const sColor=formData.processes[i].status==='CONCLUÍDO'?[0,200,100] as [number,number,number]
-          :formData.processes[i].status==='EM ANDAMENTO'?accent:[29,177,241] as [number,number,number];
-        pdf.setTextColor(...sColor);pdf.setFontSize(5);
-        pdf.text(formData.processes[i].status,186,listY,{align:'right'});
-        pdf.setTextColor(...light);pdf.setFontSize(7);
+      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(...light);
+      // mapeamento
+      if(formData.damageMapping[i]&&formData.damageMapping[i].item){
+        pdf.setFillColor(...accent); pdf.circle(23,listY-1.2,1.2,'F');
+        const label=`${formData.damageMapping[i].item}${
+          formData.damageMapping[i].damage ? ' — '+formData.damageMapping[i].damage : ''
+        }`;
+        pdf.text(label.substring(0,34),27,listY);
+      }
+      // processos
+      if(formData.processes[i]&&formData.processes[i].name){
+        pdf.setFillColor(...blue); pdf.circle(111,listY-1.2,1.2,'F');
+        const priceStr=toNum(formData.processes[i].price)>0
+          ? ` (${fmt(toNum(formData.processes[i].price))})` : '';
+        pdf.setTextColor(...light);
+        pdf.text((formData.processes[i].name+priceStr).substring(0,32),115,listY);
+        const sColor:any=formData.processes[i].status==='CONCLUÍDO'?green
+          :formData.processes[i].status==='EM ANDAMENTO'?accent:blue;
+        pdf.setTextColor(...sColor); pdf.setFontSize(5);
+        pdf.text(formData.processes[i].status,188,listY,{align:'right'});
+        pdf.setTextColor(...light); pdf.setFontSize(7);
       }
       listY+=7;
     }
-    y=Math.max(listY+8,y+40);
-    if(y>230){pdf.addPage();pdf.setFillColor(...dark);pdf.rect(0,0,210,297,'F');y=20;}
-    pdf.setFillColor(...card);pdf.roundedRect(110,y,80,6+formData.processes.length*6+18,3,3,'F');
-    pdf.setFontSize(8);pdf.setFont('helvetica','bold');pdf.setTextColor(...accent);
-    pdf.text('RESUMO FINANCEIRO',150,y+5,{align:'center'});
-    let fy=y+10;
+
+    y=listY+6;
+
+    // ─ observações
+    if(formData.notes){
+      if(y>260){pdf.addPage();pdf.setFillColor(...dark);pdf.rect(0,0,210,297,'F');y=15;}
+      drawSecHdr('OBSERVAÇÕES',20,y,170,card);
+      y+=10;
+      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(...light);
+      const lines=pdf.splitTextToSize(formData.notes,166);
+      lines.forEach((l:string)=>{ pdf.text(l,22,y); y+=6; });
+      y+=2;
+    }
+
+    // ─ resumo financeiro
+    if(y>230){pdf.addPage();pdf.setFillColor(...dark);pdf.rect(0,0,210,297,'F');y=15;}
+    const finH=6+formData.processes.filter(p=>toNum(p.price)>0).length*7+(laborFeeNum>0?7:0)+14;
+    pdf.setFillColor(...card); pdf.roundedRect(110,y,80,finH,3,3,'F');
+    pdf.setFontSize(8); pdf.setFont('helvetica','bold'); pdf.setTextColor(...accent);
+    pdf.text('RESUMO FINANCEIRO',150,y+6,{align:'center'});
+    let fy=y+12;
     formData.processes.forEach(p=>{
       const pv=toNum(p.price);
       if(pv>0){
-        pdf.setFontSize(7);pdf.setFont('helvetica','normal');pdf.setTextColor(...muted);
+        pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(...muted);
         pdf.text(p.name.substring(0,22),113,fy);
-        pdf.setTextColor(...light); pdf.text(fmt(pv),187,fy,{align:'right'}); fy+=6;
+        pdf.setTextColor(...light); pdf.text(fmt(pv),187,fy,{align:'right'}); fy+=7;
       }
     });
     if(laborFeeNum>0){
-      pdf.setFontSize(7);pdf.setFont('helvetica','normal');pdf.setTextColor(...muted);
-      pdf.text('Mão de Obra',113,fy);pdf.setTextColor(...light);
-      pdf.text(fmt(laborFeeNum),187,fy,{align:'right'});fy+=6;
+      pdf.setFontSize(7); pdf.setFont('helvetica','normal'); pdf.setTextColor(...muted);
+      pdf.text('Mão de Obra',113,fy);
+      pdf.setTextColor(...light); pdf.text(fmt(laborFeeNum),187,fy,{align:'right'}); fy+=7;
     }
-    pdf.setDrawColor(...border);pdf.line(113,fy,187,fy);fy+=4;
-    pdf.setFontSize(9);pdf.setFont('helvetica','bold');pdf.setTextColor(...green);
-    pdf.text('TOTAL',113,fy);pdf.text(fmt(grandTotal),187,fy,{align:'right'});
-    const sigY=260;
-    pdf.setDrawColor(...border);pdf.line(20,sigY,90,sigY);pdf.line(120,sigY,190,sigY);
-    if(formData.signature){try{pdf.addImage(formData.signature,'PNG',25,sigY-18,50,16);}catch{}}
-    pdf.setFontSize(6);pdf.setTextColor(...muted);
+    pdf.setDrawColor(...border); pdf.line(113,fy,187,fy); fy+=4;
+    pdf.setFontSize(10); pdf.setFont('helvetica','bold'); pdf.setTextColor(...green);
+    pdf.text('TOTAL',113,fy); pdf.text(fmt(grandTotal),187,fy,{align:'right'});
+
+    // ─ assinaturas
+    const sigY=272;
+    pdf.setDrawColor(...border);
+    pdf.line(20,sigY,90,sigY);
+    pdf.line(120,sigY,190,sigY);
+    // assinatura do cliente (canvas ou base64 salvo)
+    if(sigData){
+      try{ pdf.addImage(sigData,'PNG',25,sigY-20,55,18); }catch{}
+    }
+    pdf.setFontSize(6); pdf.setTextColor(...muted);
     pdf.text('TÉCNICO RESPONSÁVEL',55,sigY+5,{align:'center'});
-    pdf.text('CLIENTE',155,sigY+5,{align:'center'});
-    pdf.text(`Precision Garage — ${new Date().toLocaleString('pt-BR')}`,105,290,{align:'center'});
+    pdf.text('ASSINATURA DO CLIENTE',155,sigY+5,{align:'center'});
+
+    // ─ rodapé
+    pdf.setFontSize(6); pdf.setTextColor(...muted);
+    pdf.text(`${profile?.garageName||'Precision Garage'} — ${new Date().toLocaleString('pt-BR')}`,105,290,{align:'center'});
+
     pdf.save(`checklist_${formData.vehicle.plate||'pendente'}.pdf`);
     toast.success('PDF gerado!');
   };
@@ -412,10 +450,8 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
       <Card>
         <div className="flex items-center justify-between">
           <SectionTitle>Mapeamento de Danos</SectionTitle>
-          <button
-            onClick={()=>setFormData(p=>({...p,damageMapping:[...p.damageMapping,{item:'',damage:''}]}))}
-            className="flex items-center gap-1 text-[#1db1f1] text-xs font-bold"
-          >
+          <button onClick={()=>setFormData(p=>({...p,damageMapping:[...p.damageMapping,{item:'',damage:''}]}))}
+            className="flex items-center gap-1 text-[#1db1f1] text-xs font-bold">
             <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Adicionar
           </button>
         </div>
@@ -438,10 +474,8 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
                   <Select value={item.damage}
                     onChange={(e:any)=>{const n=[...formData.damageMapping];n[idx].damage=e.target.value;setFormData(p=>({...p,damageMapping:n}));}}
                     options={[{label:'Tipo...',value:''},...DAMAGE_TYPES.map(d=>({label:d,value:d}))]}/>
-                  <button
-                    onClick={()=>setFormData(p=>({...p,damageMapping:p.damageMapping.filter((_,i)=>i!==idx)}))}
-                    className="p-1.5 text-[#adaaaa] hover:text-red-400 transition-colors"
-                  >
+                  <button onClick={()=>setFormData(p=>({...p,damageMapping:p.damageMapping.filter((_,i)=>i!==idx)}))}
+                    className="p-1.5 text-[#adaaaa] hover:text-red-400 transition-colors">
                     <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4"/>
                   </button>
                 </motion.div>
@@ -584,22 +618,52 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
       <Card>
         <div className="flex items-center justify-between">
           <SectionTitle color="bg-[#1db1f1]">Assinatura do Cliente</SectionTitle>
-          <button onClick={()=>setShowSigPad(v=>!v)} className="text-[#1db1f1] text-xs font-bold">
-            {showSigPad?'OCULTAR':'ABRIR PAD'}
-          </button>
+          <div className="flex items-center gap-3">
+            {formData.signature&&(
+              <span className="text-[10px] text-[#00ff88] font-bold">✓ CAPTURADA</span>
+            )}
+            <button onClick={()=>setShowSigPad(v=>!v)} className="text-[#1db1f1] text-xs font-bold">
+              {showSigPad?'OCULTAR':'ABRIR PAD'}
+            </button>
+          </div>
         </div>
         <AnimatePresence>
           {showSigPad&&(
             <motion.div initial={{height:0,opacity:0}} animate={{height:'auto',opacity:1}} exit={{height:0,opacity:0}} className="overflow-hidden">
               <div className="bg-white rounded-xl overflow-hidden h-32 sm:h-36 relative">
-                <SignatureCanvas ref={sigPad} penColor="black" canvasProps={{className:'w-full h-full'}}/>
-                <button onClick={()=>sigPad.current?.clear()}
-                  className="absolute bottom-2 right-2 px-2 py-1 bg-gray-200 text-gray-800 text-xs font-bold rounded-lg">LIMPAR</button>
+                <SignatureCanvas
+                  ref={sigPad}
+                  penColor="black"
+                  canvasProps={{className:'w-full h-full'}}
+                  onEnd={captureSignature}
+                />
+                <button
+                  onClick={()=>{ sigPad.current?.clear(); setFormData(p=>({...p,signature:''})); }}
+                  className="absolute bottom-2 right-2 px-2 py-1 bg-gray-200 text-gray-800 text-xs font-bold rounded-lg"
+                >LIMPAR</button>
               </div>
               <p className="text-[10px] text-[#adaaaa] italic mt-2">Ao assinar, o cliente concorda com o estado atual do veículo.</p>
             </motion.div>
           )}
         </AnimatePresence>
+        {/* preview da assinatura capturada */}
+        {formData.signature&&!showSigPad&&(
+          <div className="bg-white rounded-xl overflow-hidden h-16 flex items-center justify-center">
+            <img src={formData.signature} alt="assinatura" className="max-h-14 object-contain"/>
+          </div>
+        )}
+      </Card>
+
+      {/* Observações */}
+      <Card>
+        <SectionTitle color="bg-[#adaaaa]">Observações</SectionTitle>
+        <textarea
+          placeholder="Anotações gerais, observações do cliente, etc."
+          value={formData.notes}
+          onChange={e=>setFormData(p=>({...p,notes:e.target.value}))}
+          rows={3}
+          className="w-full bg-[#0e0e0e] rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#484847] focus:ring-1 focus:ring-[#ff906d] resize-none"
+        />
       </Card>
 
       {/* Resumo Financeiro */}
