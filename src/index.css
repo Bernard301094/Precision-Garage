@@ -7,9 +7,26 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-[#0e0e0e] text-white font-body;
+    /* Evita scroll horizontal em mobile */
+    overflow-x: hidden;
+    min-height: 100dvh;
   }
+
+  /* ── Scrollbar discreta ──────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #282828; border-radius: 2px; }
+
+  /* ── Safe area para notch / home indicator ───────────────── */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 12px); }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 
   /* ── MODO CLARO ─────────────────────────────────────────── */
   body.light-mode {
@@ -27,11 +44,25 @@
   body.light-mode .pg-subtext   { color: #555555 !important; }
 
   /* Drag ghost */
-  .drag-ghost {
-    opacity: 0.4;
-    transform: scale(0.97);
+  .drag-ghost { opacity: 0.4; transform: scale(0.97); }
+  .drag-over  { border-top: 2px solid #ff906d; }
+
+  /* ── Responsive container padrão da app ─────────────────── */
+  .app-container {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 1rem;     /* 16px mobile */
   }
-  .drag-over {
-    border-top: 2px solid #ff906d;
+  @media (min-width: 640px) {
+    .app-container { padding-inline: 1.5rem; }
+  }
+  @media (min-width: 768px) {
+    .app-container { max-width: 768px; padding-inline: 2rem; }
+  }
+  @media (min-width: 1024px) {
+    .app-container { max-width: 900px; }
+  }
+  @media (min-width: 1280px) {
+    .app-container { max-width: 1024px; }
   }
 }
