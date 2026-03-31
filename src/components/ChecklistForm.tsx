@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Phone, Calendar as CalendarIcon,
   PlusCircle, Trash2, Camera, Save, CheckCircle2,
-  Fuel, Settings as SettingsIcon, Bike, GripVertical,
-  Gauge, DollarSign, PenTool, AlertCircle, ChevronDown, ChevronUp, Map
+  Fuel, Bike, GripVertical,
+  Gauge, DollarSign, PenTool, AlertCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { collection, addDoc, setDoc, doc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import SignatureCanvas from 'react-signature-canvas';
 import jsPDF from 'jspdf';
 import { useAuth } from '../context/AuthContext';
-import { MotoMap, DamagePin } from './MotoMap';
 
 interface MasterItem { id:string; name:string; type:'mapping'|'service'; price?:number; }
 interface ProcessItem { name:string; status:'PENDENTE'|'EM ANDAMENTO'|'CONCLUÍDO'; price:string; }
@@ -28,6 +27,59 @@ const STATUS_STYLE: Record<string,string> = {
   'CONCLUÍDO':    'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30',
 };
 
+// ── Mapeamento de danos (checklist físico) ─────────────────────────────────────
+const MAPPING_ITEMS = [
+  'Riscos profundos',
+  'Riscos superficiais',
+  'Marcas de lixa',
+  'Verniz desplacado',
+  'Pulverização de tinta',
+  'Motor com manchas',
+  'Pintura áspera',
+  'Parafusos enferrujados',
+  'Batida de pedras',
+  'Marcas d’água',
+  'Fezes de aves',
+  'Marcas de insetos',
+  'Cimento',
+  'Piche',
+  'Piscas com defeito',
+  'Buzina com defeito',
+  'Plásticos ressecados',
+  'Diferença de cor',
+  'Cola de adesivo',
+  'Farol fosco ou arranhado',
+  'Repintura',
+  'Retrovisor com manchas',
+  'Hologramas',
+  'Banco com rasgo',
+  'Arranhaão nas manetes',
+];
+
+// ── Processos / serviços (checklist físico) ───────────────────────────────
+const SERVICE_ITEMS = [
+  'Full Detail (Detalhamento Completo)',
+  'Proteção de 60 Dias',
+  'Proteção de 1 Ano (Selagem)',
+  'Proteção de 3 Anos (Revestimento Cerâmico)',
+  'Limpeza de Escape em Inox',
+  'Pintura de Escape',
+  'Pintura de Bengalas',
+  'Pintura de Tampas',
+  'Pintura das Manetes',
+  'Encerramento Técnico',
+  'Polimento',
+  'Vitrificação de Plástico',
+  'Vitrificação de Motor',
+  'Vitrificação de Pintura',
+  'Remoção de Piche',
+  'Revitalização de Motor',
+  'Revitalização de Bacalhaus',
+  'Limpeza de Capacete',
+  'Remoção de Contaminação da Pintura',
+  'Lavagem de Manutenção',
+];
+
 const fmt = (v:number) => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const toNum = (s:string) => { const n=parseFloat(s.replace(',','.')); return isNaN(n)?0:n; };
 
@@ -37,28 +89,24 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
   const [masterItems, setMasterItems]   = useState<MasterItem[]>([]);
   const [showSigPad, setShowSigPad]     = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(true);
-  const [showMotoMap, setShowMotoMap]   = useState(false);
   const sigPad = useRef<any>(null);
   const dragIdx = useRef<number|null>(null);
 
   const [formData, setFormData] = useState({
-    logoUrl: initialData?.logoUrl || '',
-    client:  initialData?.client  || { name:'', phone:'' },
-    vehicle: initialData?.vehicle || {
+    logoUrl:  initialData?.logoUrl  || '',
+    client:   initialData?.client   || { name:'', phone:'' },
+    vehicle:  initialData?.vehicle  || {
       model:'', plate:'', color:'', category:'',
       entryDate: new Date().toISOString().split('T')[0],
       exitDate:'', mileage:'', fuel:'50',
       vin:'', engineNumber:'', insurance:'', year:''
     },
     damageMapping: initialData?.damageMapping || [] as any[],
-    damagePins:   (initialData?.damagePins   || []) as DamagePin[],
-    // → URL da foto real da moto usada no MotoMap (Opção D)
-    motoMapPhotoUrl: (initialData?.motoMapPhotoUrl || '') as string,
-    processes:    (initialData?.processes    || []).map((p:any)=>({...p,status:p.status||'PENDENTE',price:p.price!=null?String(p.price):''})) as ProcessItem[],
-    laborFee: initialData?.laborFee!=null ? String(initialData.laborFee) : '',
-    notes:    initialData?.notes    || '',
-    signature:initialData?.signature|| '',
-    photos:   initialData?.photos   || [] as string[]
+    processes:     (initialData?.processes || []).map((p:any)=>({...p,status:p.status||'PENDENTE',price:p.price!=null?String(p.price):''})) as ProcessItem[],
+    laborFee:  initialData?.laborFee!=null ? String(initialData.laborFee) : '',
+    notes:     initialData?.notes     || '',
+    signature: initialData?.signature || '',
+    photos:    initialData?.photos    || [] as string[]
   });
 
   const servicesTotal = formData.processes.reduce((sum,p)=>sum+toNum(p.price),0);
@@ -243,19 +291,16 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
     toast.success('PDF gerado!');
   };
 
-  const mappingOptions=[
+  // Opções dos selects — masterItems têm prioridade, depois os fixos do checklist físico
+  const mappingOptions = [
     {label:'Selecione...',value:''},
     ...masterItems.filter(i=>i.type==='mapping').map(i=>({label:i.name,value:i.name})),
-    ...['Carenagem Frontal','Carenagem Lateral','Carenagem Traseira','Tanque de Combustível',
-      'Banco / Assento','Pneu Dianteiro','Pneu Traseiro','Rodas','Escapamento','Parachoque','Farol','Retrovisor'
-    ].map(v=>({label:v,value:v}))
+    ...MAPPING_ITEMS.map(v=>({label:v,value:v}))
   ];
-  const serviceOptions=[
+  const serviceOptions = [
     {label:'Selecione...',value:''},
     ...masterItems.filter(i=>i.type==='service').map(i=>({label:i.name,value:i.name})),
-    ...['Lavagem Técnica Detalhada','Descontaminação de Pintura','Proteção Cerâmica (Ceramic Coating)',
-      'Polimento','Vitrificação de Pintura','Lavagem Premium','Proteção de 60 dias','Proteção de 1 ano (Selação)'
-    ].map(v=>({label:v,value:v}))
+    ...SERVICE_ITEMS.map(v=>({label:v,value:v}))
   ];
 
   const Card=({children,className=''}:{children:React.ReactNode;className?:string})=>(
@@ -331,51 +376,14 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
         </div>
       </Card>
 
-      {/* ══════════════════════════════════════════════════════════════
-          MOTO-MAP — Opção D: foto real + pins de dano
-      ══════════════════════════════════════════════════════════════ */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <SectionTitle>Moto-Map Interativo</SectionTitle>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {formData.damagePins.length>0&&(
-              <span className="px-2 py-0.5 bg-[#ff906d]/10 text-[#ff906d] text-[9px] sm:text-[10px] font-bold rounded-lg border border-[#ff906d]/20">
-                {formData.damagePins.length} dano(s)
-              </span>
-            )}
-            <button onClick={()=>setShowMotoMap(v=>!v)}
-              className="text-[#1db1f1] text-xs font-bold flex items-center gap-1">
-              <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4"/>
-              {showMotoMap?'OCULTAR':'ABRIR MAPA'}
-            </button>
-          </div>
-        </div>
-        <AnimatePresence>
-          {showMotoMap&&(
-            <motion.div
-              initial={{height:0,opacity:0}}
-              animate={{height:'auto',opacity:1}}
-              exit={{height:0,opacity:0}}
-              className="overflow-hidden"
-            >
-              {/* Opção D: passa a foto real e o callback de troca de foto */}
-              <MotoMap
-                pins={formData.damagePins}
-                onChange={pins => setFormData(p=>({...p,damagePins:pins}))}
-                photoUrl={formData.motoMapPhotoUrl||undefined}
-                onPhotoChange={url => setFormData(p=>({...p,motoMapPhotoUrl:url}))}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Card>
-
-      {/* Mapeamento de Danos (lista textual, complementa o MotoMap) */}
+      {/* Mapeamento de Danos */}
       <Card>
         <div className="flex items-center justify-between">
           <SectionTitle>Mapeamento de Danos</SectionTitle>
-          <button onClick={()=>setFormData(p=>({...p,damageMapping:[...p.damageMapping,{item:'',damage:''}]}))}
-            className="flex items-center gap-1 text-[#1db1f1] text-xs font-bold">
+          <button
+            onClick={()=>setFormData(p=>({...p,damageMapping:[...p.damageMapping,{item:'',damage:''}]}))}
+            className="flex items-center gap-1 text-[#1db1f1] text-xs font-bold"
+          >
             <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4"/> Adicionar
           </button>
         </div>
@@ -398,8 +406,10 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
                   <Select value={item.damage}
                     onChange={(e:any)=>{const n=[...formData.damageMapping];n[idx].damage=e.target.value;setFormData(p=>({...p,damageMapping:n}));}}
                     options={[{label:'Tipo...',value:''},...DAMAGE_TYPES.map(d=>({label:d,value:d}))]}/>
-                  <button onClick={()=>setFormData(p=>({...p,damageMapping:p.damageMapping.filter((_,i)=>i!==idx)}))}
-                    className="p-1.5 text-[#adaaaa] hover:text-red-400 transition-colors">
+                  <button
+                    onClick={()=>setFormData(p=>({...p,damageMapping:p.damageMapping.filter((_,i)=>i!==idx)}))}
+                    className="p-1.5 text-[#adaaaa] hover:text-red-400 transition-colors"
+                  >
                     <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4"/>
                   </button>
                 </motion.div>
