@@ -33,44 +33,48 @@ export interface FirestoreErrorInfo {
   }
 }
 
-import { auth, storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth } from './firebase';
 import { toast } from 'sonner';
 
-export async function uploadImage(file: File, path: string): Promise<string> {
-  // Verifica autenticação antes de tentar
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dv6p4lse4';
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'precision_garage';
+
+export async function uploadImage(file: File, _path?: string): Promise<string> {
   if (!auth.currentUser) {
     toast.error('Você precisa estar logado para enviar imagens.');
     throw new Error('Usuário não autenticado.');
   }
 
-  // Verifica tamanho máximo (5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    toast.error('Imagem muito grande. Máximo 5MB.');
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('Imagem muito grande. Máximo 10MB.');
     throw new Error('Arquivo muito grande.');
   }
 
-  try {
-    const storageRef = ref(storage, path);
-    const snapshot = await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(snapshot.ref);
-    return url;
-  } catch (error: any) {
-    console.error('[uploadImage] Erro:', error?.code, error?.message);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', UPLOAD_PRESET);
+  formData.append('folder', `precision-garage/${auth.currentUser.uid}`);
 
-    // Mensagens amigáveis por código de erro do Firebase Storage
-    if (error?.code === 'storage/unauthorized') {
-      toast.error('Sem permissão para upload. Verifique as Storage Rules no Firebase Console.');
-    } else if (error?.code === 'storage/canceled') {
-      toast.error('Upload cancelado.');
-    } else if (error?.code === 'storage/quota-exceeded') {
-      toast.error('Cota de armazenamento excedida.');
-    } else if (error?.code === 'storage/invalid-url') {
-      toast.error('URL de storage inválida. Verifique a configuração do Firebase.');
-    } else {
-      toast.error(`Erro no upload: ${error?.message || 'desconhecido'}`);
+  try {
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+      { method: 'POST', body: formData }
+    );
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.error('[uploadImage] Cloudinary error:', errData);
+      toast.error(`Erro no upload: ${errData?.error?.message || res.statusText}`);
+      throw new Error(errData?.error?.message || 'Upload failed');
     }
 
+    const data = await res.json();
+    return data.secure_url as string;
+  } catch (error: any) {
+    if (!error.message?.includes('Upload failed')) {
+      console.error('[uploadImage] Erro inesperado:', error);
+      toast.error('Erro inesperado no upload. Verifique sua conexão.');
+    }
     throw error;
   }
 }
