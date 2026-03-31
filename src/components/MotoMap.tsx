@@ -21,7 +21,7 @@ const DAMAGE_CATEGORIES = {
   },
   'Corrosão': {
     color: '#d97706',
-    badge: 'bg-amber-600/15 text-amber-500 border-amber-600/30',
+    badge: 'bg-amber-600/15 text-amber-600 border-amber-600/30',
     items: ['Oxidação Superficial', 'Ferrugem Avançada', 'Corrosão por Eletrólito'],
   },
   'Mecânico / Funcional': {
@@ -65,24 +65,33 @@ const ACTIONS = [
 ] as const;
 
 // ═══════════════════════════════════════════════════════════════════
-// ZONAS — hotspots visíveis na imagem
+// ZONAS — coordenadas calibradas para a imagem real da moto
+// A imagem usa object-contain num container 100% x 62%.
+// A moto ocupa ~85% da largura e ~80% da altura, centralizada.
+// Margem H ≈ 7.5% cada lado | Margem V ≈ 10% topo e fundo
+// Coordenadas em % do CONTAINER (não da imagem isolada).
+// Vista: moto em perfil, dianteiro à ESQUERDA, traseiro à DIREITA.
 // ═══════════════════════════════════════════════════════════════════
 const MOTO_ZONES = [
-  { id: 'farol',        label: 'Farol Dianteiro',       cx: 13, cy: 42, icon: '🔦' },
-  { id: 'para_lama_d',  label: 'Para-lama Dianteiro',   cx: 14, cy: 65, icon: '🔽' },
-  { id: 'pneu_d',       label: 'Pneu Dianteiro',        cx: 17, cy: 82, icon: '⚪' },
-  { id: 'suspensao_d',  label: 'Suspensão Dianteira',   cx: 22, cy: 58, icon: '🔧' },
-  { id: 'guidao',       label: 'Guidão / Manoplas',     cx: 28, cy: 28, icon: '🎮' },
-  { id: 'painel',       label: 'Painel / Instrumentos', cx: 35, cy: 33, icon: '📊' },
-  { id: 'tanque',       label: 'Tanque de Combustível', cx: 47, cy: 28, icon: '⛽' },
-  { id: 'carenagem_l',  label: 'Carenagem Lateral',     cx: 50, cy: 56, icon: '🛡️' },
-  { id: 'motor',        label: 'Motor / Bloco',         cx: 50, cy: 70, icon: '⚙️' },
-  { id: 'banco',        label: 'Banco / Assento',       cx: 62, cy: 32, icon: '🚪' },
-  { id: 'escapamento',  label: 'Escapamento',           cx: 68, cy: 75, icon: '💨' },
-  { id: 'suspensao_t',  label: 'Suspensão Traseira',    cx: 75, cy: 58, icon: '🔧' },
-  { id: 'para_lama_t',  label: 'Para-lama Traseiro',    cx: 78, cy: 46, icon: '🔽' },
-  { id: 'lanterna',     label: 'Lanterna Traseira',     cx: 85, cy: 38, icon: '💡' },
-  { id: 'pneu_t',       label: 'Pneu Traseiro',         cx: 85, cy: 82, icon: '⚪' },
+  // ── DIANTEIRO (esquerda da imagem) ──
+  { id: 'farol',        label: 'Farol Dianteiro',       cx: 11,  cy: 38,  icon: '🔦' },
+  { id: 'suspensao_d',  label: 'Suspensão Dianteira',   cx: 16,  cy: 52,  icon: '🔧' },
+  { id: 'para_lama_d',  label: 'Para-lama Dianteiro',   cx: 17,  cy: 65,  icon: '🔽' },
+  { id: 'pneu_d',       label: 'Pneu Dianteiro',        cx: 18,  cy: 78,  icon: '⚪' },
+  // ── COCKPIT / PARTE SUPERIOR ──
+  { id: 'guidao',       label: 'Guidão / Manoplas',     cx: 28,  cy: 24,  icon: '🎮' },
+  { id: 'painel',       label: 'Painel / Instrumentos', cx: 34,  cy: 30,  icon: '📊' },
+  { id: 'tanque',       label: 'Tanque de Combustível', cx: 46,  cy: 22,  icon: '⛽' },
+  { id: 'banco',        label: 'Banco / Assento',       cx: 60,  cy: 26,  icon: '🚪' },
+  // ── LATERAL / CENTRAL ──
+  { id: 'carenagem_l',  label: 'Carenagem Lateral',     cx: 44,  cy: 50,  icon: '🛡️' },
+  { id: 'motor',        label: 'Motor / Bloco',         cx: 44,  cy: 64,  icon: '⚙️' },
+  { id: 'escapamento',  label: 'Escapamento',           cx: 60,  cy: 72,  icon: '💨' },
+  // ── TRASEIRO (direita da imagem) ──
+  { id: 'suspensao_t',  label: 'Suspensão Traseira',    cx: 72,  cy: 52,  icon: '🔧' },
+  { id: 'para_lama_t',  label: 'Para-lama Traseiro',    cx: 76,  cy: 40,  icon: '🔽' },
+  { id: 'lanterna',     label: 'Lanterna Traseira',     cx: 84,  cy: 34,  icon: '💡' },
+  { id: 'pneu_t',       label: 'Pneu Traseiro',         cx: 82,  cy: 78,  icon: '⚪' },
 ];
 
 export interface DamagePin {
@@ -161,7 +170,6 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
     const coords = getCoords(e);
     if (!coords) return;
 
-    // Ripple feedback visual
     setRipple({ x: coords.px, y: coords.py, key: Date.now() });
     setTimeout(() => setRipple(null), 600);
 
@@ -178,7 +186,6 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
     setNotes('');
   };
 
-  // Clicar diretamente num hotspot de zona
   const handleZoneClick = (e: React.MouseEvent, zone: typeof MOTO_ZONES[number]) => {
     e.stopPropagation();
     setNearestZone(zone.label);
@@ -219,7 +226,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
   return (
     <div className="space-y-4">
 
-      {/* ── Toolbar: toggle hotspots ── */}
+      {/* ── Toolbar ── */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-[#adaaaa] font-bold uppercase tracking-widest">
           Toque em uma zona ou na imagem
@@ -237,7 +244,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
         </button>
       </div>
 
-      {/* ── CANVAS DA MOTO ──────────────────────────────────────────────── */}
+      {/* ── CANVAS DA MOTO ─────────────────────────────────────── */}
       <div
         ref={containerRef}
         onClick={handleInteraction}
@@ -261,7 +268,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
           style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0,0,0,0.4) 100%)' }}
         />
 
-        {/* ── HOTSPOTS — botões de zona clícaveis ── */}
+        {/* ── HOTSPOTS ── */}
         {showHotspots && MOTO_ZONES.map(zone => {
           const isHovered   = hoveredZone === zone.id;
           const hasDamage   = pins.some(p => p.zoneId === zone.id);
@@ -275,12 +282,10 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
               className="absolute z-10 group focus:outline-none"
               style={{ left: `${zone.cx}%`, top: `${zone.cy}%`, transform: 'translate(-50%,-50%)' }}
             >
-              {/* Anel externo pulsante (sempre visível se tiver dano) */}
               {hasDamage && (
                 <span className="absolute -inset-3 rounded-full animate-ping opacity-20 bg-[#ff906d]" />
               )}
 
-              {/* Botão zona */}
               <motion.span
                 whileHover={{ scale: 1.4 }}
                 whileTap={{ scale: 0.9 }}
@@ -299,7 +304,6 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
                     : <span className="w-1.5 h-1.5 rounded-full bg-white/70" />}
               </motion.span>
 
-              {/* Label tooltip ao hover */}
               <AnimatePresence>
                 {isHovered && (
                   <motion.span
@@ -320,7 +324,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
           );
         })}
 
-        {/* ── Pins de dano confirmados ── */}
+        {/* ── Pins confirmados ── */}
         {pins.map(pin => {
           const pinColor = DAMAGE_META[pin.damage]?.color ?? '#ff906d';
           return (
@@ -388,7 +392,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
           );
         })}
 
-        {/* ── Pin pendente (onde tocou) ── */}
+        {/* ── Pin pendente ── */}
         {pendingPos && (
           <div className="absolute z-20 pointer-events-none"
             style={{ left: `${pendingPos.x}%`, top: `${pendingPos.y}%`, transform: 'translate(-50%,-50%)' }}>
@@ -401,7 +405,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
           </div>
         )}
 
-        {/* ── Ripple de clique ── */}
+        {/* ── Ripple ── */}
         <AnimatePresence>
           {ripple && (
             <motion.span
@@ -437,7 +441,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
           </div>
         )}
 
-        {/* ── Label da zona sendo hover (desktop) ── */}
+        {/* ── Label zone hover (desktop) ── */}
         {hoveredZone && !pendingPos && (
           <div className="absolute bottom-2.5 left-2.5 pointer-events-none">
             <span className="flex items-center gap-1 text-[10px] font-bold text-white bg-black/80 px-2.5 py-1 rounded-xl border border-[#333]">
@@ -448,7 +452,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
         )}
       </div>
 
-      {/* ── Grid de zonas clícaveis (alternativa mobile) ── */}
+      {/* ── Grid de zonas (mobile) ── */}
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
         {MOTO_ZONES.map(zone => {
           const damageCount = pins.filter(p => p.zoneId === zone.id).length;
@@ -474,9 +478,9 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
         })}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          PAINEL DE DETALHES DO DANO
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════════
+          PAINEL DE DANO
+      ══════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {pendingPos && (
           <motion.div
@@ -622,7 +626,7 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
         )}
       </AnimatePresence>
 
-      {/* ── LISTA DE DANOS ──────────────────────────────────────────── */}
+      {/* ── LISTA DE DANOS ─────────────────────────────────────── */}
       {pins.length > 0 && (
         <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e1e]">
