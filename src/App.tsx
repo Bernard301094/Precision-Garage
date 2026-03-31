@@ -76,7 +76,10 @@ const MainApp = () => {
 
   const showingChecklist = activeTab === 'checklist' || !!editingChecklist;
 
-  // inicial do nome do usuário para o fallback do avatar
+  // Logo da oficina: logo customizado > foto do Google > ícone Bike
+  const garageLogoUrl: string = profile?.logoUrl || profile?.photoURL || '';
+
+  // Avatar do usuário: foto Google > inicial do nome
   const userInitial = (user?.displayName || user?.email || 'U')[0].toUpperCase();
 
   return (
@@ -87,11 +90,11 @@ const MainApp = () => {
       <header className="sticky top-0 z-50 bg-[#0e0e0e]/90 backdrop-blur-xl border-b border-[#1e1e1e] pg-header">
         <div className="app-container flex items-center justify-between py-3 sm:py-4">
 
-          {/* Logo da oficina (somente logo customizado ou ícone Bike) */}
+          {/* Logo da oficina */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#1a1a1a] rounded-xl flex items-center justify-center overflow-hidden border border-[#ff906d]/20 flex-shrink-0">
-              {profile?.logoUrl
-                ? <img src={profile.logoUrl} className="w-full h-full object-cover" alt="logo da oficina" />
+              {garageLogoUrl
+                ? <img src={garageLogoUrl} className="w-full h-full object-cover" alt="logo" />
                 : <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-[#ff906d]" />}
             </div>
             <div>
@@ -111,7 +114,7 @@ const MainApp = () => {
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#ff906d] rounded-full border border-[#0e0e0e]" />
             </button>
 
-            {/* Avatar: foto do Google ou inicial do nome */}
+            {/* Avatar: foto do Google ou inicial */}
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border-2 border-[#484847] flex-shrink-0 bg-[#20201f] flex items-center justify-center">
               {user?.photoURL
                 ? <img src={user.photoURL} alt="avatar" className="w-full h-full object-cover" />
