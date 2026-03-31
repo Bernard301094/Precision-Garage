@@ -1,0 +1,125 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {uid}
+// Fields:
+//   - uid: string (required)
+//   - email: string (required, email)
+//   - displayName: string
+//   - photoURL: string
+//   - garageName: string
+//   - address: string
+//   - phone: string
+//   - website: string
+//   - role: string (admin/user)
+//
+// Collection: checklists
+// Document ID: {checklistId}
+// Fields:
+//   - client: object { name, phone, email }
+//   - vehicle: object { model, plate, year, color, mileage, fuel, category, entryDate, exitDate, vin, engineNumber, insurance }
+//   - damageMapping: list (objects with item, damage)
+//   - processes: list (objects with name, status)
+//   - estimatedValue: string
+//   - notes: string
+//   - signature: string
+//   - photos: list (strings)
+//   - status: string (draft/final)
+//   - progress: number
+//   - createdAt: timestamp
+//   - updatedAt: timestamp
+//   - createdBy: string (uid)
+//
+// Collection: masterItems
+// Document ID: {itemId}
+// Fields:
+//   - name: string (required)
+//   - description: string
+//   - type: string (mapping/service)
+//   - createdBy: string (uid)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "bernard30101994@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'garageName', 'address', 'phone', 'website', 'role', 'updatedAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             (data.role == 'user' || isAdmin());
+    }
+
+    function isValidChecklist(data) {
+      return data.keys().hasAll(['client', 'vehicle', 'damageMapping', 'processes', 'photos', 'status', 'createdBy', 'updatedAt', 'progress']) &&
+             data.client is map &&
+             data.vehicle is map &&
+             data.damageMapping is list &&
+             data.processes is list &&
+             data.photos is list &&
+             data.status in ['draft', 'final'] &&
+             data.createdBy == request.auth.uid &&
+             data.progress is number &&
+             (data.status == 'final' ? 
+               (data.client.name is string && data.client.name.size() > 0 && 
+                data.vehicle.plate is string && data.vehicle.plate.size() > 0) : 
+               (data.client.name is string && data.vehicle.plate is string)
+             );
+    }
+
+    function isValidMasterItem(data) {
+      return data.keys().hasAll(['name', 'type', 'createdBy']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type in ['mapping', 'service'] &&
+             data.createdBy == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                      (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /checklists/{checklistId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidChecklist(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.createdBy || isAdmin()) && isValidChecklist(request.resource.data);
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.createdBy || isAdmin());
+    }
+
+    match /masterItems/{itemId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMasterItem(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.createdBy || isAdmin()) && isValidMasterItem(request.resource.data);
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.createdBy || isAdmin());
+    }
+  }
+}

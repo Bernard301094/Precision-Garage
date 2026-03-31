@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile data including role and garage settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "garageName": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "website": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["uid", "email"]
+    },
+    "Checklist": {
+      "title": "Checklist",
+      "description": "Vehicle inspection checklist.",
+      "type": "object",
+      "properties": {
+        "client": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" }
+          }
+        },
+        "vehicle": {
+          "type": "object",
+          "properties": {
+            "model": { "type": "string" },
+            "plate": { "type": "string" },
+            "year": { "type": "string" },
+            "color": { "type": "string" },
+            "mileage": { "type": "string" },
+            "fuel": { "type": "string" },
+            "category": { "type": "string" },
+            "entryDate": { "type": "string" },
+            "exitDate": { "type": "string" },
+            "vin": { "type": "string" },
+            "engineNumber": { "type": "string" },
+            "insurance": { "type": "string" }
+          }
+        },
+        "damageMapping": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": { "type": "string" },
+              "damage": { "type": "string" }
+            }
+          }
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "status": { "type": "string" }
+            }
+          }
+        },
+        "estimatedValue": { "type": "string" },
+        "notes": { "type": "string" },
+        "signature": { "type": "string" },
+        "photos": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["draft", "final"] },
+        "progress": { "type": "number" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["client", "vehicle", "status", "createdBy"]
+    },
+    "MasterItem": {
+      "title": "Master Item",
+      "description": "Predefined items for mapping or services.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["mapping", "service"] },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name", "type", "createdBy"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/checklists/{checklistId}": {
+      "schema": "Checklist",
+      "description": "Vehicle checklists."
+    },
+    "/masterItems/{itemId}": {
+      "schema": "MasterItem",
+      "description": "Master items for reuse."
+    }
+  }
+}
