@@ -13,7 +13,7 @@ import { HistoryScreen } from './components/HistoryScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { ChecklistDetails } from './components/ChecklistDetails';
 
-// ── Login ──────────────────────────────────────────────────────────────────────
+// ── Login ───────────────────────────────────────────────────────────────
 const LoginScreen = () => (
   <div className="min-h-[100dvh] bg-[#000000] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
     <div className="absolute inset-0 pointer-events-none">
@@ -50,7 +50,7 @@ const LoginScreen = () => (
   </div>
 );
 
-// ── App principal ──────────────────────────────────────────────────────────────
+// ── App principal ─────────────────────────────────────────────────────────
 const MainApp = () => {
   const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState<'checklist' | 'history' | 'settings'>('history');
@@ -76,6 +76,9 @@ const MainApp = () => {
 
   const showingChecklist = activeTab === 'checklist' || !!editingChecklist;
 
+  // inicial do nome do usuário para o fallback do avatar
+  const userInitial = (user?.displayName || user?.email || 'U')[0].toUpperCase();
+
   return (
     <div className="min-h-[100dvh] bg-[#0e0e0e] text-white font-body selection:bg-[#ff906d] selection:text-[#000000] pg-surface-2">
       <Toaster position="top-right" theme="dark" richColors />
@@ -83,11 +86,12 @@ const MainApp = () => {
       {/* ── Header ────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-[#0e0e0e]/90 backdrop-blur-xl border-b border-[#1e1e1e] pg-header">
         <div className="app-container flex items-center justify-between py-3 sm:py-4">
-          {/* Logo + nome */}
+
+          {/* Logo da oficina (somente logo customizado ou ícone Bike) */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#1a1a1a] rounded-xl flex items-center justify-center overflow-hidden border border-[#ff906d]/20 flex-shrink-0">
-              {profile?.photoURL
-                ? <img src={profile.photoURL} className="w-full h-full object-cover" alt="logo" />
+              {profile?.logoUrl
+                ? <img src={profile.logoUrl} className="w-full h-full object-cover" alt="logo da oficina" />
                 : <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-[#ff906d]" />}
             </div>
             <div>
@@ -100,24 +104,25 @@ const MainApp = () => {
             </div>
           </div>
 
-          {/* Ações */}
+          {/* Ações: notificação + avatar do usuário */}
           <div className="flex items-center gap-2 sm:gap-3">
             <button className="relative p-1.5 sm:p-2 text-[#adaaaa] hover:text-white transition-colors rounded-xl hover:bg-[#1a1a1a]">
               <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#ff906d] rounded-full border border-[#0e0e0e]" />
             </button>
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border-2 border-[#484847] flex-shrink-0">
+
+            {/* Avatar: foto do Google ou inicial do nome */}
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border-2 border-[#484847] flex-shrink-0 bg-[#20201f] flex items-center justify-center">
               {user?.photoURL
                 ? <img src={user.photoURL} alt="avatar" className="w-full h-full object-cover" />
-                : <div className="w-full h-full bg-[#20201f] flex items-center justify-center">
-                    <Bike className="w-4 h-4 text-[#adaaaa]" />
-                  </div>}
+                : <span className="text-xs sm:text-sm font-headline font-bold text-[#ff906d]">{userInitial}</span>
+              }
             </div>
           </div>
         </div>
       </header>
 
-      {/* ── Main Content ──────────────────────────────────────── */}
+      {/* ── Main Content ───────────────────────────────────────────── */}
       <main className="app-container pt-4 sm:pt-6 pb-28 sm:pb-32">
         <AnimatePresence mode="wait">
           <motion.div
@@ -146,7 +151,7 @@ const MainApp = () => {
         </AnimatePresence>
       </main>
 
-      {/* ── Bottom Navigation ─────────────────────────────────── */}
+      {/* ── Bottom Navigation ─────────────────────────────────────────── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0e0e0e]/95 backdrop-blur-xl border-t border-[#1e1e1e] pb-safe pg-nav">
         <div className="app-container">
           <div className="flex items-center justify-around">
@@ -173,7 +178,7 @@ const MainApp = () => {
         </div>
       </nav>
 
-      {/* ── FAB ──────────────────────────────────────────────── */}
+      {/* ── FAB ──────────────────────────────────────────────────────── */}
       {activeTab !== 'checklist' && !selectedChecklist && !editingChecklist && (
         <motion.button
           initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.9 }}
