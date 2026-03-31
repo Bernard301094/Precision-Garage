@@ -98,8 +98,11 @@ export const SettingsScreen = () => {
 
   useEffect(() => { 
     localStorage.setItem('pg_anim', String(animations));
-    if (!animations) document.documentElement.style.setProperty('--transition-duration', '0s');
-    else document.documentElement.style.removeProperty('--transition-duration');
+    if (!animations) {
+      document.documentElement.classList.add('no-animations');
+    } else {
+      document.documentElement.classList.remove('no-animations');
+    }
   }, [animations]);
 
   useEffect(() => { 

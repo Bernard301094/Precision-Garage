@@ -85,6 +85,16 @@ body.light-mode {
     .app-container { max-width: 1024px; }
   }
 
+  /* ── No-animations mode (kills CSS + Framer Motion) ──── */
+  .no-animations *,
+  .no-animations *::before,
+  .no-animations *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+  }
+
   /* Override generic inputs to fit theme */
   input, textarea, select {
     color: var(--text-main) !important;
@@ -123,7 +133,19 @@ body.light-mode {
     border-color: var(--border) !important;
   }
 
-  body.light-mode [class*="backdrop-blur"] {
+  /* Fix backdrop blur in light mode (header, nav) */
+  body.light-mode [class*="backdrop-blur"][class*="bg-bg"] {
     background-color: rgba(244, 244, 244, 0.92) !important;
   }
+
+  /* Fix section cards in light mode */
+  body.light-mode section[class*="bg-surface"],
+  body.light-mode section[class*="bg-bg"] {
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  /* Ensure text is visible in all elements in light mode */
+  body.light-mode [class*="text-text-main"] { color: var(--text-main) !important; }
+  body.light-mode [class*="text-text-muted"] { color: var(--text-muted) !important; }
 }

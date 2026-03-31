@@ -194,7 +194,8 @@ export const HistoryScreen = ({
               type="date"
               value={searchDate}
               onChange={e => setSearchDate(e.target.value)}
-              className="w-full bg-surface border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-text-main outline-none focus:border-accent [color-scheme:dark]"
+              className={`w-full bg-surface border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-text-main outline-none focus:border-accent`}
+              style={{ colorScheme: document.body.classList.contains('light-mode') ? 'light' : 'dark' }}
             />
           </div>
           {searchDate && (
@@ -212,7 +213,7 @@ export const HistoryScreen = ({
               key={f}
               onClick={() => setFilter(f)}
               className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                filter === f ? 'bg-accent text-bg' : 'text-text-muted hover:text-text-main'
+                filter === f ? 'bg-accent text-text-on-accent' : 'text-text-muted hover:text-text-main'
               }`}
             >
               {f === 'all' ? 'TODOS' : f === 'draft' ? 'RASCUNHOS' : 'FINALIZADOS'}

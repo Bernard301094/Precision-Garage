@@ -63,15 +63,19 @@ const MainApp = () => {
 
   useEffect(() => {
     const applyTheme = () => {
-      const isDark = localStorage.getItem('pg_dark') !== 'false';
-      const accent = localStorage.getItem('pg_accent') || '#ff906d';
+      const isDark  = localStorage.getItem('pg_dark') !== 'false';
+      const isAnim  = localStorage.getItem('pg_anim')  !== 'false';
+      const accent  = localStorage.getItem('pg_accent') || '#ff906d';
+
       document.body.classList.toggle('light-mode', !isDark);
+      document.documentElement.classList.toggle('no-animations', !isAnim);
       document.documentElement.style.setProperty('--accent-color', accent);
       document.documentElement.style.setProperty('--text-on-accent', getContrastColor(accent));
     };
     applyTheme();
     window.addEventListener('storage', applyTheme);
-    const interval = setInterval(applyTheme, 500);
+    // Poll every 300ms to pick up SettingsScreen changes within same tab
+    const interval = setInterval(applyTheme, 300);
     return () => { window.removeEventListener('storage', applyTheme); clearInterval(interval); };
   }, []);
 
