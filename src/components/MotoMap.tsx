@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Trash2, ChevronDown, ChevronUp,
-  StickyNote, AlertTriangle, Wrench, Plus, X
+  Camera, Trash2, ChevronDown, ChevronUp,
+  StickyNote, AlertTriangle, Wrench, Plus, X,
+  ImagePlus, MapPin, RefreshCw
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { uploadImage } from '../lib/utils';
+import { auth } from '../lib/firebase';
 
-// ═══════════════════════════════════════════════════════════════════
-// CATEGORIAS DE DANO
 // ═══════════════════════════════════════════════════════════════════
 const DAMAGE_CATEGORIES = {
   'Superficial': {
@@ -67,55 +69,6 @@ const ACTIONS = [
 ] as const;
 
 // ═══════════════════════════════════════════════════════════════════
-// ZONAS — agrupadas por área da moto
-// ═══════════════════════════════════════════════════════════════════
-const ZONE_GROUPS = [
-  {
-    group: 'Dianteiro',
-    color: '#1db1f1',
-    zones: [
-      { id: 'farol',       label: 'Farol',           icon: '🔦' },
-      { id: 'guidao',      label: 'Guidão',          icon: '🎮' },
-      { id: 'painel',      label: 'Painel',          icon: '📊' },
-      { id: 'suspensao_d', label: 'Suspensão Diant.', icon: '🔧' },
-      { id: 'para_lama_d', label: 'Para-lama Diant.', icon: '🔽' },
-      { id: 'pneu_d',      label: 'Pneu Diant.',     icon: '⚪' },
-    ],
-  },
-  {
-    group: 'Central',
-    color: '#ff906d',
-    zones: [
-      { id: 'tanque',      label: 'Tanque',          icon: '⛽' },
-      { id: 'carenagem_l', label: 'Carenagem',       icon: '🛡️' },
-      { id: 'banco',       label: 'Banco',           icon: '🪑' },
-    ],
-  },
-  {
-    group: 'Motor / Escapamento',
-    color: '#a855f7',
-    zones: [
-      { id: 'motor',       label: 'Motor / Bloco',   icon: '⚙️' },
-      { id: 'escapamento', label: 'Escapamento',     icon: '💨' },
-    ],
-  },
-  {
-    group: 'Traseiro',
-    color: '#22c55e',
-    zones: [
-      { id: 'suspensao_t', label: 'Suspensão Tras.', icon: '🔧' },
-      { id: 'para_lama_t', label: 'Para-lama Tras.', icon: '🔽' },
-      { id: 'lanterna',    label: 'Lanterna',        icon: '💡' },
-      { id: 'pneu_t',      label: 'Pneu Tras.',      icon: '⚪' },
-    ],
-  },
-];
-
-const ALL_ZONES = ZONE_GROUPS.flatMap(g => g.zones);
-
-// ═══════════════════════════════════════════════════════════════════
-// TIPOS EXPORTADOS
-// ═══════════════════════════════════════════════════════════════════
 export interface DamagePin {
   id: string; x: number; y: number;
   damage: string; category: DamageCategory;
@@ -124,14 +77,23 @@ export interface DamagePin {
   label: string; zoneId?: string; number: number;
 }
 
-interface MotoMapProps { pins: DamagePin[]; onChange: (pins: DamagePin[]) => void; }
+export interface MotoMapProps {
+  pins: DamagePin[];
+  onChange: (pins: DamagePin[]) => void;
+  photoUrl?: string;
+  onPhotoChange?: (url: string) => void;
+}
 
 // ═══════════════════════════════════════════════════════════════════
-// COMPONENTE PRINCIPAL
-// ═══════════════════════════════════════════════════════════════════
-export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
-  const [activeZone, setActiveZone]     = useState<string | null>(null);
+export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange, photoUrl, onPhotoChange }) => {
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+
+  const [uploading, setUploading]       = useState(false);
+  const [pendingPos, setPendingPos]     = useState<{ x: number; y: number } | null>(null);
+  const [activePin, setActivePin]       = useState<string | null>(null);
   const [expandedPin, setExpandedPin]   = useState<string | null>(null);
+  const [ripple, setRipple]             = useState<{ x: number; y: number; key: number } | null>(null);
 
   // Form state
   const [selCategory, setSelCategory]   = useState<DamageCategory>('Superficial');
@@ -142,148 +104,339 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
   const [notes, setNotes]               = useState('');
   const [customLabel, setCustomLabel]   = useState('');
 
-  const nextNumber  = pins.length > 0 ? Math.max(...pins.map(p => p.number)) + 1 : 1;
+  const nextNumber   = pins.length > 0 ? Math.max(...pins.map(p => p.number)) + 1 : 1;
   const currentColor = DAMAGE_CATEGORIES[selCategory]?.color ?? '#ff906d';
 
-  const openZone = (zoneId: string) => {
-    const zone = ALL_ZONES.find(z => z.id === zoneId);
-    setActiveZone(zoneId);
-    setCustomLabel(zone?.label ?? '');
+  // ── Upload da foto ───────────────────────────────────────────
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file, `motomap/${auth.currentUser.uid}/${Date.now()}`);
+      onPhotoChange?.(url);
+      onChange([]); // limpa pins ao trocar foto
+      toast.success('Foto da moto carregada!');
+    } catch {
+      // erro já tratado pelo uploadImage
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // ── Coordenadas do toque/click ──────────────────────────────
+  const getCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!containerRef.current) return null;
+    const rect    = containerRef.current.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    return {
+      x:  ((clientX - rect.left)  / rect.width)  * 100,
+      y:  ((clientY - rect.top)   / rect.height) * 100,
+      px: clientX - rect.left,
+      py: clientY - rect.top,
+    };
+  }, []);
+
+  // ── Toque na imagem ───────────────────────────────────────────
+  const handleImageTap = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!photoUrl) return;
+    e.preventDefault();
+    const coords = getCoords(e);
+    if (!coords) return;
+
+    setRipple({ x: coords.px, y: coords.py, key: Date.now() });
+    setTimeout(() => setRipple(null), 600);
+
+    setActivePin(null);
+    setPendingPos({ x: coords.x, y: coords.y });
     setSelCategory('Superficial');
     setSelDamage('Risco Leve');
     setSelSeverity('2');
     setSelSide('');
     setSelActions([]);
     setNotes('');
-  };
-
-  const confirmPin = () => {
-    if (!activeZone) return;
-    onChange([...pins, {
-      id: Date.now().toString(),
-      x: 0, y: 0,
-      damage: selDamage, category: selCategory,
-      severity: selSeverity, side: selSide || undefined,
-      actions: selActions, notes: notes.trim(),
-      label: customLabel.trim() || ALL_ZONES.find(z => z.id === activeZone)?.label || selDamage,
-      zoneId: activeZone, number: nextNumber,
-    }]);
-    setActiveZone(null);
     setCustomLabel('');
   };
 
-  const removePin  = (id: string) => onChange(pins.filter(p => p.id !== id));
-  const clearAll   = () => onChange([]);
+  // ── Confirmar pin ─────────────────────────────────────────────
+  const confirmPin = () => {
+    if (!pendingPos) return;
+    onChange([...pins, {
+      id: Date.now().toString(),
+      x: pendingPos.x,
+      y: pendingPos.y,
+      damage: selDamage,
+      category: selCategory,
+      severity: selSeverity,
+      side: selSide || undefined,
+      actions: selActions,
+      notes: notes.trim(),
+      label: customLabel.trim() || selDamage,
+      number: nextNumber,
+    }]);
+    setPendingPos(null);
+    setCustomLabel('');
+  };
+
+  const removePin    = (id: string) => onChange(pins.filter(p => p.id !== id));
+  const clearAll     = () => { onChange([]); };
   const toggleAction = (a: string) =>
     setSelActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
-
-  const activeZoneData = ALL_ZONES.find(z => z.id === activeZone);
 
   return (
     <div className="space-y-4">
 
-      {/* ── Cabeçalho ── */}
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] text-[#adaaaa] font-bold uppercase tracking-widest">
-          Selecione uma zona para registrar dano
-        </p>
-        {pins.length > 0 && (
-          <span className="px-2.5 py-1 bg-[#ff906d]/10 text-[#ff906d] text-[10px] font-bold rounded-lg border border-[#ff906d]/20">
-            {pins.length} dano{pins.length > 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+      {/* ── UPLOAD PROMPT (sem foto) ── */}
+      {!photoUrl && (
+        <label className={`flex flex-col items-center justify-center gap-3 w-full rounded-2xl border-2 border-dashed transition-all cursor-pointer ${
+          uploading
+            ? 'border-[#ff906d]/40 bg-[#ff906d]/5'
+            : 'border-[#282828] hover:border-[#ff906d]/50 hover:bg-[#ff906d]/5 bg-[#0a0a0a]'
+        }`}
+          style={{ minHeight: 200 }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoUpload}
+          />
+          {uploading ? (
+            <>
+              <div className="w-10 h-10 border-4 border-[#ff906d] border-t-transparent rounded-full animate-spin" />
+              <p className="text-[#ff906d] text-xs font-bold uppercase tracking-widest">Enviando foto...</p>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 rounded-2xl bg-[#1a1a1a] border border-[#282828] flex items-center justify-center">
+                <Camera className="w-8 h-8 text-[#ff906d]" />
+              </div>
+              <div className="text-center space-y-1 px-4">
+                <p className="text-white font-bold text-sm">Fotografar a Moto</p>
+                <p className="text-[#adaaaa] text-xs">Tire uma foto ou escolha da galeria.</p>
+                <p className="text-[#555] text-[10px]">Os pontos de dano serão marcados sobre a sua foto real.</p>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff906d] text-black text-xs font-black uppercase tracking-widest">
+                <ImagePlus className="w-4 h-4" /> ABRIR CÂMERA / GALERIA
+              </div>
+            </>
+          )}
+        </label>
+      )}
 
-      {/* ── GRID DE ZONAS ── */}
-      <div className="space-y-3">
-        {ZONE_GROUPS.map(group => (
-          <div key={group.group}>
-            {/* Título do grupo */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
-              <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: group.color }}>
-                {group.group}
-              </span>
-              <div className="flex-1 h-px bg-[#1e1e1e]" />
+      {/* ── CANVAS: foto + pins ── */}
+      {photoUrl && (
+        <>
+          {/* Toolbar acima da foto */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#ff906d]" />
+              <p className="text-[10px] text-[#adaaaa] font-bold uppercase tracking-widest">
+                Toque na foto para marcar dano
+              </p>
             </div>
+            <label className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[#282828] bg-[#1a1a1a] text-[#adaaaa] hover:text-white hover:border-[#444] transition-all cursor-pointer">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoUpload}
+              />
+              {uploading
+                ? <><RefreshCw className="w-3 h-3 animate-spin" /> Enviando...</>
+                : <><Camera className="w-3 h-3" /> Trocar foto</>}
+            </label>
+          </div>
 
-            {/* Cards das zonas */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-              {group.zones.map(zone => {
-                const zonePins     = pins.filter(p => p.zoneId === zone.id);
-                const hasPin       = zonePins.length > 0;
-                const isActive     = activeZone === zone.id;
+          {/* Container da imagem com pins overlay */}
+          <div
+            ref={containerRef}
+            onClick={handleImageTap}
+            onTouchStart={handleImageTap}
+            className="relative w-full rounded-2xl overflow-hidden border-2 border-[#282828] hover:border-[#ff906d]/40 transition-colors cursor-crosshair select-none touch-none"
+            style={{ paddingBottom: '62%', minHeight: 180 }}
+          >
+            {/* Foto real da moto */}
+            <img
+              src={photoUrl}
+              alt="Moto — foto real"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              draggable={false}
+            />
 
-                return (
-                  <motion.button
-                    key={zone.id}
-                    whileTap={{ scale: 0.94 }}
-                    onClick={() => openZone(zone.id)}
-                    className={`relative flex flex-col items-center gap-1 py-3 px-2 rounded-2xl border text-center transition-all duration-200 ${
-                      isActive
-                        ? 'border-[#ff906d] bg-[#ff906d]/10 shadow-lg shadow-[#ff906d]/10'
-                        : hasPin
-                          ? 'border-[#ff906d]/40 bg-[#ff906d]/5'
-                          : 'bg-[#0e0e0e] border-[#1e1e1e] hover:border-[#333] hover:bg-[#141414]'
-                    }`}
+            {/* Véu sutil para contraste dos pins */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 40%, rgba(0,0,0,0.25) 100%)' }}
+            />
+
+            {/* ── Pins confirmados ── */}
+            {pins.map(pin => {
+              const pinColor = DAMAGE_META[pin.damage]?.color ?? '#ff906d';
+              const sv       = SEVERITY_LEVELS.find(s => s.id === pin.severity);
+              return (
+                <div
+                  key={pin.id}
+                  className="absolute z-20"
+                  style={{ left: `${pin.x}%`, top: `${pin.y}%`, transform: 'translate(-50%, -50%)' }}
+                >
+                  <button
+                    onClick={e => { e.stopPropagation(); setActivePin(activePin === pin.id ? null : pin.id); setPendingPos(null); }}
+                    className="relative focus:outline-none group"
                   >
-                    {/* Badge contador */}
-                    {hasPin && (
-                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#ff906d] text-black text-[9px] font-black flex items-center justify-center shadow-md">
-                        {zonePins.length}
+                    {/* Pulso */}
+                    <span
+                      className="absolute -inset-2 rounded-full animate-ping opacity-25 pointer-events-none"
+                      style={{ backgroundColor: pinColor }}
+                    />
+                    {/* Botão */}
+                    <motion.span
+                      whileHover={{ scale: 1.2 }}
+                      whileTap={{ scale: 0.85 }}
+                      className="relative flex items-center justify-center w-8 h-8 rounded-full font-black text-[11px] text-black border-2 border-white/60 shadow-2xl"
+                      style={{ backgroundColor: pinColor }}
+                    >
+                      {pin.number}
+                    </motion.span>
+                    {/* Ícone de alerta para grave/crítico */}
+                    {parseInt(pin.severity) >= 3 && (
+                      <span
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0e0e0e] flex items-center justify-center"
+                        style={{ backgroundColor: sv?.color }}
+                      >
+                        <AlertTriangle className="w-2.5 h-2.5 text-black" />
                       </span>
                     )}
 
-                    {/* Ícone */}
-                    <span className="text-xl leading-none">{zone.icon}</span>
+                    {/* Popup do pin */}
+                    <AnimatePresence>
+                      {activePin === pin.id && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.85, y: 6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.85 }}
+                          onClick={e => e.stopPropagation()}
+                          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 w-56 bg-[#111]/95 backdrop-blur-sm border border-[#383838] rounded-2xl p-3 shadow-2xl text-left pointer-events-auto"
+                        >
+                          <p className="font-bold text-xs text-white leading-tight">{pin.label}</p>
+                          <p className="text-[10px] mt-0.5 font-semibold" style={{ color: pinColor }}>{pin.damage}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded-md font-bold"
+                              style={{ backgroundColor: sv?.color + '22', color: sv?.color }}
+                            >{sv?.label}</span>
+                            {pin.side && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-[#1a1a1a] text-[#adaaaa]">{pin.side}</span>
+                            )}
+                          </div>
+                          {pin.actions.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {pin.actions.map(a => (
+                                <span key={a} className="text-[8px] px-1.5 py-0.5 rounded bg-[#1e1e1e] text-[#adaaaa] border border-[#2a2a2a] flex items-center gap-0.5">
+                                  <Wrench className="w-2 h-2" />{a}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {pin.notes && (
+                            <p className="text-[9px] text-[#666] mt-1.5 italic leading-relaxed border-t border-[#222] pt-1.5">{pin.notes}</p>
+                          )}
+                          <button
+                            onClick={() => { removePin(pin.id); setActivePin(null); }}
+                            className="mt-2 w-full flex items-center justify-center gap-1 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-[10px] font-bold hover:bg-red-500/20 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />REMOVER
+                          </button>
+                          <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#111] border-r border-b border-[#383838] rotate-45" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                </div>
+              );
+            })}
 
-                    {/* Label */}
-                    <span className={`text-[8px] font-bold leading-tight ${
-                      isActive ? 'text-[#ff906d]' : hasPin ? 'text-[#ff906d]/80' : 'text-[#555]'
-                    }`}>
-                      {zone.label}
-                    </span>
+            {/* ── Pin pendente (cursor de posição) ── */}
+            {pendingPos && (
+              <div
+                className="absolute z-20 pointer-events-none"
+                style={{ left: `${pendingPos.x}%`, top: `${pendingPos.y}%`, transform: 'translate(-50%,-50%)' }}
+              >
+                <motion.span
+                  initial={{ scale: 0.3, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="block w-8 h-8 rounded-full border-2 border-[#ff906d] shadow-xl"
+                  style={{ background: 'rgba(255,144,109,0.3)' }}
+                />
+              </div>
+            )}
 
-                    {/* Indicador ativo */}
-                    {isActive && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#ff906d] rounded-full" />
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
+            {/* ── Ripple de clique ── */}
+            <AnimatePresence>
+              {ripple && (
+                <motion.span
+                  key={ripple.key}
+                  initial={{ width: 0, height: 0, opacity: 0.7, x: ripple.x, y: ripple.y }}
+                  animate={{ width: 90, height: 90, opacity: 0, x: ripple.x - 45, y: ripple.y - 45 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  className="absolute z-30 rounded-full border-2 border-[#ff906d] pointer-events-none"
+                />
+              )}
+            </AnimatePresence>
+
+            {/* ── Hint inicial ── */}
+            {pins.length === 0 && !pendingPos && (
+              <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none">
+                <motion.span
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                  className="flex items-center gap-1.5 text-[10px] font-bold text-white uppercase tracking-widest bg-black/75 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10"
+                >
+                  <MapPin className="w-3 h-3 text-[#ff906d]" />Toque para marcar dano
+                </motion.span>
+              </div>
+            )}
+
+            {/* ── Contador top-right ── */}
+            {pins.length > 0 && (
+              <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-xl border border-white/10">
+                <MapPin className="w-3 h-3 text-[#ff906d]" />
+                <span className="text-[10px] font-black text-white">{pins.length}</span>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════
-          PAINEL DE REGISTRO DE DANO
+          PAINEL DE REGISTRO DE DANO (abre após toque na foto)
       ══════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
-        {activeZone && (
+        {pendingPos && (
           <motion.div
-            key={activeZone}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
             className="bg-[#111] border border-[#ff906d]/30 rounded-2xl overflow-hidden"
           >
-            {/* Header do painel */}
+            {/* Header */}
             <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-[#1e1e1e]">
               <div className="flex items-center gap-2">
                 <span
                   className="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-black text-black flex-shrink-0"
                   style={{ backgroundColor: currentColor }}
                 >{nextNumber}</span>
-                <div>
-                  <p className="text-xs font-black text-[#ff906d] uppercase tracking-widest">Registrar Dano</p>
-                  <p className="text-[10px] text-[#adaaaa] font-bold">
-                    {activeZoneData?.icon} {activeZoneData?.label}
-                  </p>
-                </div>
+                <p className="text-xs font-black text-[#ff906d] uppercase tracking-widest">Registrar Dano #{nextNumber}</p>
               </div>
               <button
-                onClick={() => setActiveZone(null)}
+                onClick={() => setPendingPos(null)}
                 className="p-1.5 rounded-xl bg-[#1a1a1a] text-[#555] hover:text-white hover:bg-[#222] transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -335,7 +488,9 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
                       className={`flex flex-col items-center py-2.5 px-1 rounded-xl border text-[9px] font-bold transition-all ${
                         selSeverity === sv.id ? 'border-transparent scale-[1.05] shadow-lg' : 'bg-[#0e0e0e] text-[#555] border-[#222]'
                       }`}
-                      style={selSeverity === sv.id ? { backgroundColor: sv.color + '22', color: sv.color, borderColor: sv.color + '55' } : {}}
+                      style={selSeverity === sv.id
+                        ? { backgroundColor: sv.color + '22', color: sv.color, borderColor: sv.color + '55' }
+                        : {}}
                     >
                       <span className="w-3 h-3 rounded-full mb-1" style={{ backgroundColor: sv.color }} />
                       <span>{sv.label}</span>
@@ -379,14 +534,14 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
                 </div>
               </div>
 
-              {/* 6 · COMPONENTE & NOTAS */}
+              {/* 6 · LABEL & NOTAS */}
               <div className="space-y-2">
                 <p className="text-[10px] font-black text-[#adaaaa] uppercase tracking-widest flex items-center gap-1.5">
                   <StickyNote className="w-3 h-3" />6 · Componente & Observações
                 </p>
                 <input
                   type="text"
-                  placeholder="Componente (ex: Carenagem Lateral Direita)"
+                  placeholder="Ex: Carenagem Lateral Direita"
                   value={customLabel}
                   onChange={e => setCustomLabel(e.target.value)}
                   className="w-full bg-[#0e0e0e] rounded-xl px-3 py-2.5 text-sm text-white outline-none border border-[#282828] focus:border-[#ff906d] placeholder:text-[#333]"
@@ -404,32 +559,24 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
               <div className="flex flex-wrap gap-1.5 items-center p-3 bg-[#0e0e0e] rounded-xl border border-[#1e1e1e]">
                 <span className="text-[9px] font-bold text-[#adaaaa] uppercase mr-1">Resumo:</span>
                 <span className="text-[9px] px-2 py-0.5 rounded-md font-bold border"
-                  style={{ backgroundColor: currentColor + '20', color: currentColor, borderColor: currentColor + '40' }}>
-                  {selDamage}
-                </span>
+                  style={{ backgroundColor: currentColor + '20', color: currentColor, borderColor: currentColor + '40' }}
+                >{selDamage}</span>
                 <span className="text-[9px] px-2 py-0.5 rounded-md font-bold"
                   style={{
                     backgroundColor: SEVERITY_LEVELS.find(s => s.id === selSeverity)?.color + '20',
                     color: SEVERITY_LEVELS.find(s => s.id === selSeverity)?.color,
-                  }}>
-                  {SEVERITY_LEVELS.find(s => s.id === selSeverity)?.label}
-                </span>
-                {selSide && (
-                  <span className="text-[9px] px-2 py-0.5 rounded-md font-bold bg-[#1db1f1]/15 text-[#1db1f1]">{selSide}</span>
-                )}
-                {selActions.length > 0 && (
-                  <span className="text-[9px] text-[#adaaaa]">· {selActions.length} ação(ões)</span>
-                )}
+                  }}
+                >{SEVERITY_LEVELS.find(s => s.id === selSeverity)?.label}</span>
+                {selSide && <span className="text-[9px] px-2 py-0.5 rounded-md font-bold bg-[#1db1f1]/15 text-[#1db1f1]">{selSide}</span>}
+                {selActions.length > 0 && <span className="text-[9px] text-[#adaaaa]">· {selActions.length} ação(ões)</span>}
               </div>
 
-              {/* Botões de ação */}
+              {/* Botões */}
               <div className="flex gap-2 pt-1">
                 <button
-                  onClick={() => setActiveZone(null)}
+                  onClick={() => setPendingPos(null)}
                   className="flex-1 py-2.5 rounded-xl bg-[#1a1a1a] text-[#adaaaa] text-xs font-bold border border-[#282828] hover:bg-[#222] transition-colors"
-                >
-                  CANCELAR
-                </button>
+                >CANCELAR</button>
                 <button
                   onClick={confirmPin}
                   className="flex-2 flex-grow-[2] py-2.5 rounded-xl text-black text-xs font-bold shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-1.5"
@@ -463,54 +610,38 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
               const pinColor   = DAMAGE_META[pin.damage]?.color ?? '#ff906d';
               const sv         = SEVERITY_LEVELS.find(s => s.id === pin.severity);
               const isExpanded = expandedPin === pin.id;
-              const zoneData   = ALL_ZONES.find(z => z.id === pin.zoneId);
               return (
                 <div key={pin.id} className="hover:bg-[#161616] transition-colors">
                   <button
                     className="w-full flex items-center gap-3 px-4 py-3 text-left"
                     onClick={() => setExpandedPin(isExpanded ? null : pin.id)}
                   >
-                    {/* Número */}
                     <span
                       className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-black text-black"
                       style={{ backgroundColor: pinColor }}
                     >{pin.number}</span>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {zoneData && <span className="text-sm leading-none">{zoneData.icon}</span>}
-                        <p className="text-xs font-bold text-white truncate">{pin.label}</p>
-                      </div>
+                      <p className="text-xs font-bold text-white truncate">{pin.label}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <p className="text-[9px] font-bold" style={{ color: pinColor }}>{pin.damage}</p>
                         {sv && (
                           <span className="text-[8px] px-1.5 rounded font-bold"
-                            style={{ backgroundColor: sv.color + '22', color: sv.color }}>
-                            {sv.label}
-                          </span>
+                            style={{ backgroundColor: sv.color + '22', color: sv.color }}
+                          >{sv.label}</span>
                         )}
                         {pin.side && <span className="text-[8px] text-[#666]">· {pin.side}</span>}
                       </div>
                     </div>
-
-                    {/* Expand */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {pin.actions.length > 0 && (
-                        <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#00ff88]/10 text-[#00ff88] font-bold">
-                          {pin.actions.length}x
-                        </span>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#00ff88]/10 text-[#00ff88] font-bold">{pin.actions.length}x</span>
                       )}
                       {parseInt(pin.severity) >= 3 && (
                         <AlertTriangle className="w-3 h-3" style={{ color: sv?.color }} />
                       )}
-                      {isExpanded
-                        ? <ChevronUp className="w-3 h-3 text-[#444]" />
-                        : <ChevronDown className="w-3 h-3 text-[#444]" />}
+                      {isExpanded ? <ChevronUp className="w-3 h-3 text-[#444]" /> : <ChevronDown className="w-3 h-3 text-[#444]" />}
                     </div>
                   </button>
-
-                  {/* Detalhes expandidos */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -522,13 +653,10 @@ export const MotoMap: React.FC<MotoMapProps> = ({ pins, onChange }) => {
                         <div className="px-4 pb-3 space-y-2.5 border-t border-[#1e1e1e] pt-3">
                           <div className="flex flex-wrap gap-1.5">
                             <span className="text-[9px] px-2 py-0.5 rounded-md font-bold border"
-                              style={{ backgroundColor: pinColor + '20', color: pinColor, borderColor: pinColor + '40' }}>
-                              {pin.category}
-                            </span>
+                              style={{ backgroundColor: pinColor + '20', color: pinColor, borderColor: pinColor + '40' }}
+                            >{pin.category}</span>
                             {pin.side && (
-                              <span className="text-[9px] px-2 py-0.5 rounded-md font-bold bg-[#1db1f1]/10 text-[#1db1f1] border border-[#1db1f1]/20">
-                                {pin.side}
-                              </span>
+                              <span className="text-[9px] px-2 py-0.5 rounded-md font-bold bg-[#1db1f1]/10 text-[#1db1f1] border border-[#1db1f1]/20">{pin.side}</span>
                             )}
                           </div>
                           {pin.actions.length > 0 && (
