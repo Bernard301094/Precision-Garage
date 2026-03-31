@@ -5,11 +5,11 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export const Button = ({ children, className, variant = 'primary', size = 'md', ...props }: any) => {
   const variants: any = {
-    primary: 'bg-accent text-bg hover:bg-[#ff7a4d] shadow-lg shadow-[#ff906d]/20',
-    secondary: 'bg-surface-hover text-text-main hover:bg-surface-hover border border-border-strong',
+    primary: 'bg-accent text-text-on-accent hover:opacity-90 shadow-lg shadow-accent/20',
+    secondary: 'bg-surface-hover text-text-main hover:bg-surface border border-border-strong',
     outline: 'bg-transparent border-2 border-accent text-accent hover:bg-accent/10',
-    ghost: 'bg-transparent text-text-muted hover:text-text-main hover:bg-white/5',
-    danger: 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-text-main border border-red-500/20'
+    ghost: 'bg-transparent text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5',
+    danger: 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
   };
   const sizes: any = {
     sm: 'px-4 py-2 text-xs',

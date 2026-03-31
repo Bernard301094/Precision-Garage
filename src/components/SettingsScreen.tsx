@@ -386,7 +386,7 @@ export const SettingsScreen = () => {
                 title={c.label}
                 className={`w-9 h-9 flex-shrink-0 rounded-xl transition-all duration-200 ${
                   accentColor === c.value
-                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-[#1a1a1a] scale-110'
+                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface scale-110'
                     : 'opacity-70 hover:opacity-100'
                 }`}
                 style={{ backgroundColor: c.value }}
@@ -399,7 +399,7 @@ export const SettingsScreen = () => {
                 title="Cor Customizada"
                 className={`w-9 h-9 flex-shrink-0 rounded-xl transition-all duration-200 ${
                   accentColor === color
-                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-[#1a1a1a] scale-110'
+                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface scale-110'
                     : 'opacity-70 hover:opacity-100'
                 }`}
                 style={{ backgroundColor: color }}

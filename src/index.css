@@ -91,5 +91,39 @@ body.light-mode {
   }
   ::placeholder {
     color: var(--text-muted) !important;
+    opacity: 1;
+  }
+
+  /* ── Light mode comprehensive overrides ─────────────────── */
+  /* Any element using old hardcoded dark colors will be caught
+     by targeting common semi-transparent patterns */
+  body.light-mode {
+    /* Fix nav/header blurs */
+    --header-blur-bg: rgba(244, 244, 244, 0.95);
+    --nav-blur-bg: rgba(248, 248, 248, 0.98);
+  }
+  
+  /* Ensure white/light cards in light mode for components using inline color hacks */
+  body.light-mode [class*="bg-[#111"]:not([class*="text"]):not([class*="border"]),
+  body.light-mode [class*="bg-[#0e0"],
+  body.light-mode [class*="bg-[#1a1"],
+  body.light-mode [class*="bg-[#20201"] {
+    background-color: var(--surface) !important;
+  }
+
+  body.light-mode [class*="text-[#555"],
+  body.light-mode [class*="text-[#444"],
+  body.light-mode [class*="text-[#333"] {
+    color: var(--text-muted) !important;
+  }
+
+  body.light-mode [class*="border-[#2"],
+  body.light-mode [class*="border-[#1e"],
+  body.light-mode [class*="border-[#22"] {
+    border-color: var(--border) !important;
+  }
+
+  body.light-mode [class*="backdrop-blur"] {
+    background-color: rgba(244, 244, 244, 0.92) !important;
   }
 }
