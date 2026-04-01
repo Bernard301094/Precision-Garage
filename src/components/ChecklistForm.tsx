@@ -475,8 +475,8 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
           </button>
         </div>
         {formData.damageMapping.length>0?(
-          <div className="rounded-xl overflow-hidden border border-border">
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 sm:px-4 py-2 bg-bg">
+          <div className="rounded-xl border border-border">
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 sm:px-4 py-2 bg-bg rounded-t-xl">
               <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">COMPONENTE</span>
               <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">DANO</span>
               <span className="w-6"/>
@@ -485,13 +485,26 @@ export const ChecklistScreen = ({ onComplete, initialData }: { onComplete:()=>vo
               {formData.damageMapping.map((item,idx)=>(
                 <motion.div key={idx}
                   initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}}
+                  style={{ overflow: 'visible' }}
                   className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center px-3 sm:px-4 py-2.5 border-t border-border"
                 >
                   <Select value={item.item}
-                    onChange={(e:any)=>{const n=[...formData.damageMapping];n[idx].item=e.target.value;setFormData(p=>({...p,damageMapping:n}));}}
+                    onChange={(e:any)=>{
+                      setFormData(p=>{
+                        const n=[...p.damageMapping];
+                        n[idx] = { ...n[idx], item: e.target.value };
+                        return {...p,damageMapping:n};
+                      });
+                    }}
                     options={mappingOptions}/>
                   <Select value={item.damage}
-                    onChange={(e:any)=>{const n=[...formData.damageMapping];n[idx].damage=e.target.value;setFormData(p=>({...p,damageMapping:n}));}}
+                    onChange={(e:any)=>{
+                      setFormData(p=>{
+                        const n=[...p.damageMapping];
+                        n[idx] = { ...n[idx], damage: e.target.value };
+                        return {...p,damageMapping:n};
+                      });
+                    }}
                     options={[{label:'Tipo...',value:''},...DAMAGE_TYPES.map(d=>({label:d,value:d}))]}/>
                   <button onClick={()=>setFormData(p=>({...p,damageMapping:p.damageMapping.filter((_,i)=>i!==idx)}))}
                     className="p-1.5 text-text-muted hover:text-red-400 transition-colors">
