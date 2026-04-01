@@ -69,12 +69,12 @@ const MainApp = () => {
 
       document.body.classList.toggle('light-mode', !isDark);
       document.documentElement.classList.toggle('no-animations', !isAnim);
-      document.documentElement.style.setProperty('--accent-color', accent);
-      document.documentElement.style.setProperty('--text-on-accent', getContrastColor(accent));
+      // Set --color-accent directly so Tailwind's bg-accent / text-accent classes work
+      document.documentElement.style.setProperty('--color-accent', accent);
+      document.documentElement.style.setProperty('--color-text-on-accent', getContrastColor(accent));
     };
     applyTheme();
     window.addEventListener('storage', applyTheme);
-    // Poll every 300ms to pick up SettingsScreen changes within same tab
     const interval = setInterval(applyTheme, 300);
     return () => { window.removeEventListener('storage', applyTheme); clearInterval(interval); };
   }, []);
@@ -103,10 +103,14 @@ const MainApp = () => {
         position="top-center" 
         toastOptions={{
           className: 'font-body font-bold text-sm tracking-wide rounded-2xl border backdrop-blur-md',
-          style: { background: '#1a1a1a', borderColor: '#484847', color: '#fff' },
+          style: {
+            background: 'var(--color-surface)',
+            borderColor: 'var(--color-border-strong)',
+            color: 'var(--color-text-main)',
+          },
           classNames: {
             error: 'bg-red-500/10 border-red-500/30 text-red-500',
-            success: 'bg-[#00ff88]/10 border-[#00ff88]/30 text-[#00ff88]',
+            success: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600',
             warning: 'bg-accent/10 border-accent/30 text-accent',
             info: 'bg-[#1db1f1]/10 border-[#1db1f1]/30 text-[#1db1f1]',
           }
@@ -213,7 +217,8 @@ const MainApp = () => {
         <motion.button
           initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.9 }}
           onClick={() => setActiveTab('checklist')}
-          className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 bg-accent text-bg rounded-2xl shadow-xl shadow-[#ff906d]/30 flex items-center justify-center z-40"
+          className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 bg-accent text-text-on-accent rounded-2xl shadow-xl flex items-center justify-center z-40"
+          style={{ boxShadow: '0 8px 25px color-mix(in srgb, var(--color-accent) 35%, transparent)' }}
         >
           <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6" />
         </motion.button>

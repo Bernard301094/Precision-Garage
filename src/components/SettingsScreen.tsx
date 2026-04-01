@@ -107,8 +107,9 @@ export const SettingsScreen = () => {
 
   useEffect(() => { 
     localStorage.setItem('pg_accent', accentColor);
-    document.documentElement.style.setProperty('--accent-color', accentColor);
-    document.documentElement.style.setProperty('--text-on-accent', getContrastColor(accentColor));
+    // Set --color-accent so Tailwind utility classes (bg-accent, text-accent) pick it up
+    document.documentElement.style.setProperty('--color-accent', accentColor);
+    document.documentElement.style.setProperty('--color-text-on-accent', getContrastColor(accentColor));
   }, [accentColor]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,22 +174,47 @@ export const SettingsScreen = () => {
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(d => {
         const r = d.data();
+        // Tradução simples de status (caso necessário)
+        const statusMap: Record<string, string> = {
+          'pending': 'PENDENTE',
+          'draft': 'PENDENTE',
+          'in_progress': 'EM ANDAMENTO',
+          'completed': 'CONCLUÍDO',
+          'cancelled': 'CANCELADO'
+        };
+        const rawStatus = (r.status || 'PENDENTE').toLowerCase();
+        const translatedStatus = statusMap[rawStatus] || rawStatus.toUpperCase();
+
         return {
-          ID: d.id,
-          Data:      r.createdAt?.toDate().toLocaleDateString(),
-          Cliente:   r.client?.name,
-          Telefone:  r.client?.phone,
-          Veiculo:   r.vehicle?.model,
-          Placa:     r.vehicle?.plate,
-          KM:        r.vehicle?.mileage,
-          Combustivel: (r.vehicle?.fuel || '') + '%',
-          Status:    (r.status || '').toUpperCase()
+          'CÓDIGO':     d.id.substring(0, 8).toUpperCase(),
+          'DATA':       r.createdAt?.toDate().toLocaleDateString('pt-BR'),
+          'CLIENTE':    r.client?.name,
+          'TELEFONE':   r.client?.phone,
+          'VEÍCULO':    r.vehicle?.model,
+          'PLACA':      r.vehicle?.plate,
+          'CATEGORIA':  r.vehicle?.category || '-',
+          'KM':         r.vehicle?.mileage || '0',
+          'COMBUSTÍVEL':(r.vehicle?.fuel || '0') + '%',
+          'VALOR (R$)': r.estimatedValue || '0,00',
+          'STATUS':     translatedStatus
         };
       });
       const ws = XLSX.utils.json_to_sheet(data);
+      
+      // Ajuste de largura das colunas
+      ws['!cols'] = [
+        { wch: 10 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
+        { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 12 },
+        { wch: 15 }
+      ];
+
+      // Ativar autofiltro para dar cara de tabela
+      const range = XLSX.utils.decode_range(ws['!ref'] || "A1:K1");
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Checklists');
-      XLSX.writeFile(wb, `checklists_precision_garage_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, `checklists_precision_${new Date().toISOString().split('T')[0]}.xlsx`);
       toast.success('Excel exportado!');
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'checklists');
@@ -202,56 +228,100 @@ export const SettingsScreen = () => {
       const q = query(collection(db, 'checklists'), where('createdBy', '==', user.uid));
       const snapshot = await getDocs(q);
       const pdf = new jsPDF();
+      
+      const primary: [number,number,number] = [14, 14, 14];   // Quase preto
+      const accent:  [number,number,number] = [255, 144, 109]; // Laranja PG
+      const border:  [number,number,number] = [226, 232, 240]; // Slate 200
+      const bgHeader:[number,number,number] = [248, 250, 252]; // Slate 50 (fundo cabeçalho)
+      const secondary:[number,number,number] = [100, 116, 139]; // Slate 500
 
-      pdf.setFillColor(14, 14, 14);
-      pdf.rect(0, 0, 210, 297, 'F');
-      pdf.setTextColor(255, 144, 109);
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('RELATÓRIO GERAL', 105, 20, { align: 'center' });
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(10);
-      pdf.text(garageData.name || 'Precision Garage', 105, 28, { align: 'center' });
-      pdf.setTextColor(173, 170, 170);
-      pdf.setFontSize(8);
-      pdf.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 105, 34, { align: 'center' });
+      // ─ CABEÇALHO ───────────────────────────────────────────────────
+      pdf.setFillColor(bgHeader[0], bgHeader[1], bgHeader[2]); pdf.rect(0, 0, 210, 40, 'F');
+      pdf.setDrawColor(border[0], border[1], border[2]); pdf.line(0, 40, 210, 40);
 
-      let y = 46;
+      const hasLogo = profile?.photoURL;
+      if (hasLogo) {
+         try { pdf.addImage(profile?.photoURL || '', 'JPEG', 15, 6, 28, 28); } catch(e) {}
+      }
+
+      const textX = hasLogo ? 105 : 105; // Centralizado independentemente
+      pdf.setTextColor(primary[0], primary[1], primary[2]); pdf.setFontSize(22); pdf.setFont('helvetica', 'bold');
+      pdf.text('RELATÓRIO GERAL DE CHECKLISTS', textX, 18, { align: 'center' });
+      
+      pdf.setTextColor(secondary[0], secondary[1], secondary[2]); pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+      pdf.text(garageData.name || 'Precision Garage', textX, 26, { align: 'center' });
+      pdf.setFontSize(8); 
+      pdf.text(`TOTAL DE REGISTROS: ${snapshot.docs.length} | EMITIDO EM ${new Date().toLocaleString('pt-BR')}`, textX, 32, { align: 'center' });
+
+      let y = 55;
       const headers = ['DATA', 'CLIENTE', 'VEÍCULO', 'PLACA', 'STATUS'];
-      const colW = [28, 50, 42, 28, 32];
-      let x = 15;
+      const colW = [25, 45, 40, 30, 35];
+      let xPos = 15;
 
-      pdf.setFillColor(32, 32, 31);
-      pdf.rect(14, y - 5, 182, 10, 'F');
-      pdf.setTextColor(255, 144, 109);
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'bold');
-      headers.forEach((h, i) => { pdf.text(h, x + 1, y); x += colW[i]; });
-
-      y += 8;
-      snapshot.docs.forEach(d => {
-        if (y > 275) { pdf.addPage(); y = 20; }
-        const r = d.data();
-        const row = [
-          r.createdAt?.toDate().toLocaleDateString('pt-BR') || '-',
-          r.client?.name || '-',
-          r.vehicle?.model || '-',
-          r.vehicle?.plate || '-',
-          (r.status || '-').toUpperCase()
-        ];
-        x = 15;
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(7);
-        row.forEach((cell, i) => {
-          pdf.text(String(cell).substring(0, 20), x + 1, y);
-          x += colW[i];
-        });
-        y += 7;
+      // ─ HEADER DA TABELA ─────────────────────────────────────────────
+      pdf.setFillColor(accent[0], accent[1], accent[2]); pdf.roundedRect(15, y - 6, 180, 8, 1, 1, 'F');
+      pdf.setTextColor(255, 255, 255); pdf.setFontSize(8); pdf.setFont('helvetica', 'bold');
+      headers.forEach((h, i) => {
+         pdf.text(h, xPos + 2, y - 0.5);
+         xPos += colW[i];
       });
 
-      pdf.save(`relatorio_precision_garage_${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success('PDF exportado!');
+      y += 8;
+      snapshot.docs.forEach((d, idx) => {
+         if (y > 275) { 
+            pdf.addPage();
+            y = 20;
+            // Repetir header na nova página
+            pdf.setFillColor(accent[0], accent[1], accent[2]); pdf.roundedRect(15, y - 6, 180, 8, 1, 1, 'F');
+            pdf.setTextColor(255, 255, 255); pdf.setFontSize(8); pdf.setFont('helvetica', 'bold');
+            let hX = 15;
+            headers.forEach((h, i) => { pdf.text(h, hX + 2, y - 0.5); hX += colW[i]; });
+            y += 8;
+         }
+
+         const r = d.data();
+         
+         // Tradução de status
+         const statusMap: Record<string, string> = {
+            'pending': 'PENDENTE',
+            'draft': 'RASCUNHO',
+            'in_progress': 'EM ANDAMENTO',
+            'completed': 'CONCLUÍDO',
+            'cancelled': 'CANCELADO'
+         };
+         const rawStatus = (r.status || 'PENDENTE').toLowerCase();
+         const translatedStatus = statusMap[rawStatus] || rawStatus.toUpperCase();
+
+         const row = [
+            r.createdAt?.toDate().toLocaleDateString('pt-BR') || '-',
+            (r.client?.name || '-').substring(0, 20),
+            (r.vehicle?.model || '-').substring(0, 18),
+            (r.vehicle?.plate || '-'),
+            translatedStatus
+         ];
+
+         // Fundo zebrado sutil
+         if (idx % 2 === 0) { pdf.setFillColor(252, 252, 252); pdf.rect(15, y - 5, 180, 7, 'F'); }
+         
+         pdf.setDrawColor(border[0], border[1], border[2]); pdf.line(15, y + 2, 195, y + 2);
+         
+         pdf.setTextColor(primary[0], primary[1], primary[2]); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5);
+         let curX = 15;
+         row.forEach((cell, i) => {
+            if (i === 4) { // Status column
+               const isFinal = cell === 'CONCLUÍDO';
+               pdf.setTextColor(isFinal ? 34 : accent[0], isFinal ? 197 : accent[1], isFinal ? 94 : accent[2]);
+               pdf.setFont('helvetica', 'bold');
+            }
+            pdf.text(String(cell), curX + 2, y);
+            pdf.setTextColor(primary[0], primary[1], primary[2]); pdf.setFont('helvetica', 'normal');
+            curX += colW[i];
+         });
+         y += 7;
+      });
+
+      pdf.save(`relatorio_geral_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF consolidado pronto!');
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'checklists');
     } finally { setLoading(false); }
@@ -283,7 +353,7 @@ export const SettingsScreen = () => {
                 {garageData.logo && !logoError ? (
                   <>
                     <img src={garageData.logo} className="w-full h-full object-cover" alt="logo" onError={() => setLogoError(true)} />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="w-6 h-6 text-text-main" />
                     </div>
                   </>
@@ -306,7 +376,7 @@ export const SettingsScreen = () => {
                 {avatarData.photoURL && !avatarError ? (
                   <>
                     <img src={avatarData.photoURL} className="w-full h-full object-cover" alt="avatar" onError={() => setAvatarError(true)} />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="w-6 h-6 text-text-main" />
                     </div>
                   </>
@@ -541,7 +611,7 @@ export const SettingsScreen = () => {
                 </button>
                 <button
                   onClick={() => logout()}
-                  className="py-3 rounded-xl bg-red-500 text-text-main font-headline font-bold text-sm"
+                  className="py-3 rounded-xl bg-red-500 text-white font-headline font-bold text-sm"
                 >
                   CONFIRMAR
                 </button>

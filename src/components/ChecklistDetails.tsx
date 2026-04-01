@@ -17,6 +17,7 @@ export const ChecklistDetails = ({ checklist: initialChecklist, onBack }: { chec
   const { profile } = useAuth();
   const [checklist, setChecklist] = useState(initialChecklist);
   const [updatingIdx, setUpdatingIdx] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Sync state if prop changes (solves stale data caching across quick renders)
   React.useEffect(() => {
@@ -24,6 +25,26 @@ export const ChecklistDetails = ({ checklist: initialChecklist, onBack }: { chec
   }, [initialChecklist]);
 
   const PROCESS_STATUSES = ['PENDENTE', 'EM ANDAMENTO', 'CONCLUÍDO'];
+
+  const handleFinalize = async () => {
+    if (!checklist.id || loading) return;
+    setLoading(true);
+    try {
+      const procs = (checklist.processes || []).map((p: any) => ({ ...p, status: 'CONCLUÍDO' }));
+      await updateDoc(doc(db, 'checklists', checklist.id), {
+        status: 'final',
+        progress: 100,
+        processes: procs
+      });
+      setChecklist(p => ({ ...p, status: 'final', progress: 100, processes: procs }));
+      toast.success('Checklist finalizado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao finalizar checklist');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCycleStatus = async (idx: number) => {
     if (updatingIdx !== null || !checklist.id) return;
@@ -256,8 +277,13 @@ export const ChecklistDetails = ({ checklist: initialChecklist, onBack }: { chec
           <Button variant="outline" size="sm" onClick={generatePDF}>
             <Download className="w-4 h-4" /> PDF
           </Button>
+          {checklist.status !== 'final' && (
+            <Button size="sm" onClick={handleFinalize} disabled={loading}>
+              <CheckCircle2 className="w-4 h-4" /> FINALIZAR
+            </Button>
+          )}
           <span className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border ${checklist.status === 'final' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20' : 'bg-[#1db1f1]/10 text-[#1db1f1] border-[#1db1f1]/20'}`}>
-            {checklist.status === 'final' ? 'FINALIZADO' : 'RASCUNHO'}
+            {checklist.status === 'final' ? 'FINALIZADO' : 'EM ANDAMENTO'}
           </span>
         </div>
       </div>

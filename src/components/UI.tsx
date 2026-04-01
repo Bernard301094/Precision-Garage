@@ -8,7 +8,7 @@ export const Button = ({ children, className, variant = 'primary', size = 'md', 
     primary: 'bg-accent text-text-on-accent hover:opacity-90 shadow-lg shadow-accent/20',
     secondary: 'bg-surface-hover text-text-main hover:bg-surface border border-border-strong',
     outline: 'bg-transparent border-2 border-accent text-accent hover:bg-accent/10',
-    ghost: 'bg-transparent text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5',
+    ghost: 'bg-transparent text-text-muted hover:text-text-main hover:bg-surface-hover',
     danger: 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
   };
   const sizes: any = {
